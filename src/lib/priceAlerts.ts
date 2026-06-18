@@ -91,13 +91,13 @@ export function evaluatePriceAlerts(snapshots: WatchlistSnapshot[]): void {
   for (const rule of rules) {
     const snapshot = snapshots.find((row) => row.itemId === rule.itemId)
     if (!snapshot) continue
-    if (snapshot.instantProfit < rule.minProfit || snapshot.instantRoi < rule.minRoi) continue
+    if (snapshot.listingProfit < rule.minProfit || snapshot.listingRoi < rule.minRoi) continue
 
     const key = String(rule.itemId)
     if (cooldown[key] && now - cooldown[key] < COOLDOWN_MS) continue
 
     new Notification('GW2 TP alert', {
-      body: `${snapshot.name}: ${snapshot.instantProfit}c profit (${snapshot.instantRoi.toFixed(1)}% ROI)`,
+      body: `${snapshot.name}: ${snapshot.listingProfit}c list profit (${snapshot.listingRoi.toFixed(1)}% ROI)`,
       tag: `gw2-tp-alert-${rule.itemId}`,
     })
 

@@ -1,4 +1,4 @@
-import { listingFlipProfit } from './profit'
+import { spreadListingFlipProfit } from './profit'
 
 /** Suggest a sell list price one copper below lowest competitor. */
 export function suggestUndercutSell(lowestSell: number): number {
@@ -16,17 +16,17 @@ export function suggestOutbidBuy(highestBuy: number): number {
   return highestBuy + 1
 }
 
-export function spreadPercent(buyPrice: number, sellPrice: number): number {
-  if (buyPrice <= 0) return 0
-  return ((sellPrice - buyPrice) / buyPrice) * 100
+export function spreadPercent(lowestSell: number, highestBuy: number): number {
+  if (highestBuy <= 0) return 0
+  return ((lowestSell - highestBuy) / highestBuy) * 100
 }
 
 export function stackInstantProfit(unitProfit: number, quantity: number): number {
   return unitProfit * quantity
 }
 
-export function stackListingProfit(buyPrice: number, listPrice: number, quantity: number): number {
-  return listingFlipProfit(buyPrice, listPrice) * quantity
+export function stackListingProfit(lowestSell: number, highestBuy: number, quantity: number): number {
+  return spreadListingFlipProfit(lowestSell, highestBuy) * quantity
 }
 
 export function maxFlipQuantity(buyVolume: number, sellVolume: number): number {

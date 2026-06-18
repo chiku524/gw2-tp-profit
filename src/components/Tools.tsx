@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchCommercePrice, searchItems } from '../lib/gw2Api'
 import { formatCoins, parseCoinsInput } from '../lib/coins'
-import { instantFlipProfit, listingFlipProfit, LISTING_FEE_RATE, EXCHANGE_FEE_RATE } from '../lib/profit'
+import { instantFlipProfit, spreadListingFlipProfit, listingFlipProfit } from '../lib/profit'
 import type { CommercePrice, Gw2Item } from '../types'
 
 export function ItemLookup() {
@@ -51,7 +51,7 @@ export function ItemLookup() {
   const buyPrice = price?.sells.unit_price ?? 0
   const sellPrice = price?.buys.unit_price ?? 0
   const instantProfit = instantFlipProfit(buyPrice, sellPrice)
-  const listingProfit = listingFlipProfit(buyPrice, sellPrice)
+  const listingProfit = spreadListingFlipProfit(buyPrice, sellPrice)
 
   return (
     <section className="panel">
@@ -107,11 +107,9 @@ export function ItemLookup() {
               <strong className={instantProfit > 0 ? 'profit' : 'loss'}>{formatCoins(instantProfit)}</strong>
             </div>
             <div>
-              <span>List at buy price (after fees)</span>
+              <span>Listing flip (est.)</span>
               <strong className={listingProfit > 0 ? 'profit' : 'loss'}>{formatCoins(listingProfit)}</strong>
-              <small>
-                {Math.round(LISTING_FEE_RATE * 100)}% listing + {Math.round(EXCHANGE_FEE_RATE * 100)}% sale tax
-              </small>
+              <small>Outbid top buy, undercut lowest sell (after fees)</small>
             </div>
           </div>
         </div>

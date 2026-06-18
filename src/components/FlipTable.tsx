@@ -20,14 +20,14 @@ function sortRows(rows: FlipOpportunity[], key: FlipSortKey, dir: SortDir): Flip
       case 'sell':
         return a.sellPrice - b.sellPrice
       case 'roi':
-        return a.instantRoi - b.instantRoi
+        return a.listingRoi - b.listingRoi
       case 'spread':
         return (a.spreadPct ?? 0) - (b.spreadPct ?? 0)
       case 'volume':
         return Math.min(a.buyVolume, a.sellVolume) - Math.min(b.buyVolume, b.sellVolume)
       case 'profit':
       default:
-        return a.instantProfit - b.instantProfit
+        return a.listingProfit - b.listingProfit
     }
   })
   return dir === 'desc' ? sorted.reverse() : sorted
@@ -63,7 +63,7 @@ export function FlipTable({ rows }: Props) {
   )
 
   if (rows.length === 0) {
-    return <p className="empty-state">No flip opportunities match your filters yet. Run a scan to search the trading post.</p>
+    return <p className="empty-state">No listing-flip opportunities match your filters. Try the High volume preset or lower min profit, then run a scan.</p>
   }
 
   return (
@@ -83,11 +83,11 @@ export function FlipTable({ rows }: Props) {
             <tr>
               <th></th>
               <th>{sortLabel('name', 'Item')}</th>
-              <th>{sortLabel('buy', 'Buy')}</th>
-              <th>{sortLabel('sell', 'Sell')}</th>
-              <th>{sortLabel('profit', 'Profit')}</th>
+              <th>{sortLabel('buy', 'Lowest sell')}</th>
+              <th>{sortLabel('sell', 'Highest buy')}</th>
+              <th>{sortLabel('profit', 'List profit')}</th>
               <th>{sortLabel('roi', 'ROI')}</th>
-              <th>{sortLabel('spread', 'Spread')}</th>
+              <th>{sortLabel('spread', 'Gap')}</th>
               <th>{sortLabel('volume', 'Volume')}</th>
             </tr>
           </thead>
@@ -118,8 +118,8 @@ export function FlipTable({ rows }: Props) {
                 </td>
                 <td>{formatCoins(row.buyPrice)}</td>
                 <td>{formatCoins(row.sellPrice)}</td>
-                <td className="profit">{formatCoins(row.instantProfit)}</td>
-                <td>{row.instantRoi.toFixed(1)}%</td>
+                <td className={row.listingProfit > 0 ? 'profit' : 'loss'}>{formatCoins(row.listingProfit)}</td>
+                <td>{row.listingRoi.toFixed(1)}%</td>
                 <td>{(row.spreadPct ?? 0).toFixed(1)}%</td>
                 <td>{row.buyVolume} / {row.sellVolume}</td>
               </tr>

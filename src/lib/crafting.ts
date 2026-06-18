@@ -6,7 +6,8 @@ import {
   fetchRecipes,
   searchRecipesByOutput,
 } from './gw2Api'
-import { listingFlipProfit, instantFlipProfit } from './profit'
+import { listingFlipProfit } from './profit'
+import { suggestUndercutSell } from './marketMath'
 import type { CraftingResult, Gw2Recipe } from '../types'
 
 type RecipeTreeNode = {
@@ -90,7 +91,8 @@ export async function calculateCraftingProfits(
     }
   }
 
-  const outputSell = sellPrices[outputItemId] ?? 0
+  const outputHighestBuy = sellPrices[outputItemId] ?? 0
+  const outputLowestSell = buyPrices[outputItemId] ?? 0
   const results: CraftingResult[] = []
 
   for (const tree of treesForItem) {
@@ -99,8 +101,11 @@ export async function calculateCraftingProfits(
 
     const calculated = cheapestTree(1, tree, itemPrices, availableItems) as RecipeTreeNode
     const craftCost = treeCraftCost(calculated)
-    const instantProfit = instantFlipProfit(craftCost, outputSell)
-    const listingProfit = craftCost > 0 && outputSell > 0 ? listingFlipProfit(craftCost, outputSell) : 0
+    const listPrice = suggestUndercutSell(outputLowestSell)
+    const listingProfit =
+      craftCost > 0 && listPrice > 0 ? listingFlipProfit(craftCost, listPrice) : 0
+    const instantProfit =
+      craftCost > 0 && outputLowestSell > 0 ? outputLowestSell - craftCost : 0
 
     results.push({
       outputItemId,
@@ -108,8 +113,8 @@ export async function calculateCraftingProfits(
       icon,
       recipeId: recipe.id,
       craftCost,
-      sellRevenue: outputSell,
-      listingRevenue: outputSell > 0 ? Math.round(outputSell * 0.85) : 0,
+      sellRevenue: outputHighestBuy,
+      listingRevenue: listPrice > 0 ? Math.round(listPrice * 0.85) : 0,
       instantProfit,
       listingProfit,
       disciplines: recipe.disciplines ?? [],

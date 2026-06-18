@@ -5,6 +5,7 @@ import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
 import { formatCoins } from '../lib/coins'
 import { fetchCommercePrices, fetchGemExchange, fetchItems } from '../lib/gw2Api'
+import { opportunityFromPrice } from '../lib/profit'
 import { QUICK_PICKS } from '../lib/scanPresets'
 import type { FlipOpportunity, GemExchange } from '../types'
 
@@ -34,25 +35,12 @@ export function MarketDashboard({ lastScan, onBrowseGroup, onGoAccount }: Props)
       const [prices, items] = await Promise.all([fetchCommercePrices(ids), fetchItems(ids)])
       const itemMap = new Map(items.map((item) => [item.id, item]))
       setQuickPrices(
-        prices.map((price) => {
-          const item = itemMap.get(price.id)
-          const buy = price.sells.unit_price
-          const sell = price.buys.unit_price
-          return {
-            itemId: price.id,
-            itemName: item?.name ?? `Item ${price.id}`,
-            icon: item?.icon,
-            buyPrice: buy,
-            sellPrice: sell,
-            instantProfit: sell - buy,
-            instantRoi: buy > 0 ? ((sell - buy) / buy) * 100 : 0,
-            buyVolume: price.sells.quantity,
-            sellVolume: price.buys.quantity,
-            listingProfit: 0,
-            listingRoi: 0,
-            whitelisted: price.whitelisted,
-          }
-        }),
+        prices
+          .map((price) => {
+            const item = itemMap.get(price.id)
+            return opportunityFromPrice(price, item?.name ?? `Item ${price.id}`, item?.icon)
+          })
+          .filter((row): row is FlipOpportunity => row !== null),
       )
     })()
   }, [entries])
@@ -120,8 +108,8 @@ export function MarketDashboard({ lastScan, onBrowseGroup, onGoAccount }: Props)
                 <button type="button" onClick={() => openItem({ id: row.itemId, name: row.itemName, icon: row.icon })}>
                   {row.icon ? <img src={row.icon} alt="" width={24} height={24} /> : null}
                   <span>{row.itemName}</span>
-                  <strong className={row.instantProfit > 0 ? 'profit' : 'loss'}>
-                    {formatCoins(row.instantProfit)}
+                  <strong className={row.listingProfit > 0 ? 'profit' : 'loss'}>
+                    {formatCoins(row.listingProfit)}
                   </strong>
                 </button>
               </li>
@@ -139,7 +127,7 @@ export function MarketDashboard({ lastScan, onBrowseGroup, onGoAccount }: Props)
                 <button type="button" onClick={() => openItem({ id: row.itemId, name: row.itemName, icon: row.icon })}>
                   {row.icon ? <img src={row.icon} alt="" width={24} height={24} /> : null}
                   <span>{row.itemName}</span>
-                  <strong className="profit">{formatCoins(row.instantProfit)}</strong>
+                  <strong className="profit">{formatCoins(row.listingProfit)}</strong>
                 </button>
               </li>
             ))}

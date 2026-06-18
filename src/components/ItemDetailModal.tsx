@@ -20,7 +20,7 @@ import {
 import { fetchPriceHistory, type PriceSnapshot } from '../lib/priceHistory'
 import {
   instantFlipProfit,
-  listingFlipProfit,
+  spreadListingFlipProfit,
   LISTING_FEE_RATE,
   EXCHANGE_FEE_RATE,
 } from '../lib/profit'
@@ -93,7 +93,7 @@ export function ItemDetailModal({ onOpenCrafting }: Props) {
   const buyPrice = price?.sells.unit_price ?? 0
   const sellPrice = price?.buys.unit_price ?? 0
   const instantProfit = instantFlipProfit(buyPrice, sellPrice)
-  const listingProfit = listingFlipProfit(buyPrice, sellPrice)
+  const listingProfit = spreadListingFlipProfit(buyPrice, sellPrice)
   const spread = spreadPercent(buyPrice, sellPrice)
   const maxQty = price ? maxFlipQuantity(price.sells.quantity, price.buys.quantity) : 0
   const display = details ?? item
@@ -167,12 +167,12 @@ export function ItemDetailModal({ onOpenCrafting }: Props) {
                 <small>{price.buys.quantity} demanded</small>
               </div>
               <div>
-                <span>Spread</span>
+                <span>Spread gap</span>
                 <strong className={spread > 0 ? 'profit' : 'loss'}>{spread.toFixed(1)}%</strong>
-                <small>{formatCoins(instantProfit)} per unit</small>
+                <small>{formatCoins(sellPrice - buyPrice)} between top buy &amp; lowest sell</small>
               </div>
               <div>
-                <span>Listing profit</span>
+                <span>Listing flip (est.)</span>
                 <strong className={listingProfit > 0 ? 'profit' : 'loss'}>
                   {formatCoins(listingProfit)}
                 </strong>

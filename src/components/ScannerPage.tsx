@@ -38,7 +38,11 @@ export function ScannerPage({ scanner, browseIds, onBrowseConsumed }: Props) {
       <div className="panel-header">
         <div>
           <h2>Flip scanner</h2>
-          <p className="hint">Scan the entire trading post or load a quick browse group from Market.</p>
+          <p className="hint">
+            Scans ~28k items using live GW2 prices (each scan takes 2–3 min). Profit is estimated for a
+            listing flip: outbid highest buy (+1c), then undercut lowest sell (−1c) after your buy order fills.
+            Instant buy→sell-to-buy-order is almost never profitable on GW2.
+          </p>
         </div>
       </div>
 

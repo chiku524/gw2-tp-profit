@@ -64,13 +64,13 @@ export function useFlipScanner() {
           if (filters.f2pOnly && !price.whitelisted) continue
           const opportunity = opportunityFromPrice(price)
           if (!opportunity) continue
-          if (opportunity.instantProfit < filters.minProfit) continue
-          if (opportunity.instantRoi < filters.minRoi) continue
+          if (opportunity.listingProfit < filters.minProfit) continue
+          if (opportunity.listingRoi < filters.minRoi) continue
           if (Math.min(opportunity.buyVolume, opportunity.sellVolume) < filters.minVolume) continue
           matches.push(opportunity)
         }
 
-        matches.sort((a, b) => b.instantProfit - a.instantProfit)
+        matches.sort((a, b) => b.listingProfit - a.listingProfit)
         if (matches.length > filters.maxItems * 3) {
           matches.length = filters.maxItems * 3
         }
@@ -129,7 +129,7 @@ export function useFlipScanner() {
       const matches = prices
         .map((price) => opportunityFromPrice(price))
         .filter((row): row is FlipOpportunity => row !== null)
-        .sort((a, b) => b.instantProfit - a.instantProfit)
+        .sort((a, b) => b.listingProfit - a.listingProfit)
 
       const items = await fetchItems(itemIds)
       const itemMap = new Map(items.map((item) => [item.id, item]))

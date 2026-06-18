@@ -93,6 +93,8 @@ export type WatchlistSnapshot = {
   sellPrice: number
   instantProfit: number
   instantRoi: number
+  listingProfit: number
+  listingRoi: number
   spreadPct: number
 }
 

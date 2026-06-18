@@ -5,8 +5,7 @@ import { useWatchlist } from '../context/WatchlistProvider'
 import { evaluatePriceAlerts } from '../lib/priceAlerts'
 import { formatCoins } from '../lib/coins'
 import { fetchCommercePrices, fetchItems } from '../lib/gw2Api'
-import { spreadPercent } from '../lib/marketMath'
-import { instantFlipProfit, roi } from '../lib/profit'
+import { opportunityFromPrice } from '../lib/profit'
 import type { WatchlistSnapshot } from '../types'
 
 export function WatchlistPanel() {
@@ -34,22 +33,26 @@ export function WatchlistPanel() {
       const snapshots: WatchlistSnapshot[] = prices.map((price) => {
         const entry = entries.find((row) => row.itemId === price.id)
         const item = itemMap.get(price.id)
-        const buyPrice = price.sells.unit_price
-        const sellPrice = price.buys.unit_price
-        const profit = instantFlipProfit(buyPrice, sellPrice)
+        const opportunity = opportunityFromPrice(
+          price,
+          item?.name ?? entry?.name ?? `Item ${price.id}`,
+          item?.icon ?? entry?.icon,
+        )
         return {
           itemId: price.id,
-          name: item?.name ?? entry?.name ?? `Item ${price.id}`,
-          icon: item?.icon ?? entry?.icon,
-          buyPrice,
-          sellPrice,
-          instantProfit: profit,
-          instantRoi: roi(profit, buyPrice),
-          spreadPct: spreadPercent(buyPrice, sellPrice),
+          name: opportunity?.itemName ?? item?.name ?? entry?.name ?? `Item ${price.id}`,
+          icon: opportunity?.icon ?? item?.icon ?? entry?.icon,
+          buyPrice: price.sells.unit_price,
+          sellPrice: price.buys.unit_price,
+          instantProfit: opportunity?.instantProfit ?? 0,
+          instantRoi: opportunity?.instantRoi ?? 0,
+          listingProfit: opportunity?.listingProfit ?? 0,
+          listingRoi: opportunity?.listingRoi ?? 0,
+          spreadPct: opportunity?.spreadPct ?? 0,
         }
       })
 
-      snapshots.sort((a, b) => b.instantProfit - a.instantProfit)
+      snapshots.sort((a, b) => b.listingProfit - a.listingProfit)
       setRows(snapshots)
       evaluatePriceAlerts(snapshots)
     } catch (err) {
@@ -112,7 +115,6 @@ export function WatchlistPanel() {
               <th>Sell</th>
               <th>Profit</th>
               <th>ROI</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -130,10 +132,10 @@ export function WatchlistPanel() {
                 </td>
                 <td>{formatCoins(row.buyPrice)}</td>
                 <td>{formatCoins(row.sellPrice)}</td>
-                <td className={row.instantProfit > 0 ? 'profit' : 'loss'}>
-                  {formatCoins(row.instantProfit)}
+                <td className={row.listingProfit > 0 ? 'profit' : 'loss'}>
+                  {formatCoins(row.listingProfit)}
                 </td>
-                <td>{row.instantRoi.toFixed(1)}%</td>
+                <td>{row.listingRoi.toFixed(1)}%</td>
                 <td>
                   <button type="button" className="icon-btn" onClick={() => remove(row.itemId)} title="Remove">
                     ✕
