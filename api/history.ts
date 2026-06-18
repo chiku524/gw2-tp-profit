@@ -1,17 +1,18 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { readPriceHistory } from './_lib/redis'
 
-export default async function handler(request: Request): Promise<Response> {
-  const url = new URL(request.url)
-  const itemId = url.searchParams.get('itemId')
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const itemId = typeof req.query.itemId === 'string' ? req.query.itemId : req.query.itemId?.[0]
 
   if (!itemId || !/^\d+$/.test(itemId)) {
-    return Response.json({ error: 'Invalid item id' }, { status: 400 })
+    res.status(400).json({ error: 'Invalid item id' })
+    return
   }
 
   try {
     const history = await readPriceHistory(Number(itemId), 200)
-    return Response.json(history)
+    res.status(200).json(history)
   } catch {
-    return Response.json([])
+    res.status(200).json([])
   }
 }

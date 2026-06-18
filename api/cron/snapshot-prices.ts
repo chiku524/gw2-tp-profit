@@ -1,3 +1,4 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { pushPriceSnapshot } from '../_lib/redis'
 
 /** Item IDs tracked by the server-side price snapshot cron. */
@@ -25,10 +26,11 @@ async function fetchPrices(
   return Array.isArray(data) ? data : [data]
 }
 
-export default async function handler(request: Request): Promise<Response> {
-  const auth = request.headers.get('authorization')
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const auth = req.headers.authorization
   if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response('Unauthorized', { status: 401 })
+    res.status(401).send('Unauthorized')
+    return
   }
 
   let stored = 0
@@ -57,7 +59,7 @@ export default async function handler(request: Request): Promise<Response> {
     }
   }
 
-  return Response.json({
+  res.status(200).json({
     ok: true,
     stored,
     tracked: SNAPSHOT_ITEM_IDS.length,
