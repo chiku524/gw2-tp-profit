@@ -17,7 +17,7 @@ import {
   suggestOutbidBuy,
   suggestUndercutSell,
 } from '../lib/marketMath'
-import { fetchPriceHistory, type PriceSnapshot } from '../lib/priceHistory'
+import { fetchPriceHistory, recordPriceSnapshot, type PriceSnapshot } from '../lib/priceHistory'
 import { loadProfitMovesCache } from '../lib/preferences'
 import { formatProfitMoveInputs, kindLabel } from '../lib/profitMoves'
 import {
@@ -61,6 +61,7 @@ export function ItemDetailModal({ onOpenCrafting, onGoCrafts }: Props) {
       ])
       setDetails(itemDetails)
       setPrice(commerce)
+      recordPriceSnapshot(commerce)
       setListings(orderBook)
       const priceHistory = await fetchPriceHistory(item.id)
       setHistory(priceHistory)

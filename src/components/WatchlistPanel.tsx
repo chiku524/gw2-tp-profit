@@ -4,6 +4,7 @@ import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
 import { evaluatePriceAlerts } from '../lib/priceAlerts'
 import { formatCoins } from '../lib/coins'
+import { recordPriceSnapshots } from '../lib/priceHistory'
 import { fetchCommercePrices, fetchItems } from '../lib/gw2Api'
 import { enrichFlipOpportunities } from '../lib/itemNames'
 import { opportunityFromPrice } from '../lib/profit'
@@ -29,6 +30,7 @@ export function WatchlistPanel() {
     try {
       const ids = entries.map((entry) => entry.itemId)
       const [prices, items] = await Promise.all([fetchCommercePrices(ids), fetchItems(ids)])
+      recordPriceSnapshots(prices)
       const itemMap = new Map(items.map((item) => [item.id, item]))
 
       const opportunities = prices.map((price) => {

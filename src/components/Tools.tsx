@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { recordPriceSnapshot } from '../lib/priceHistory'
 import { fetchCommercePrice, searchItems } from '../lib/gw2Api'
 import { formatCoins, parseCoinsInput } from '../lib/coins'
 import { instantFlipProfit, spreadListingFlipProfit, listingFlipProfit } from '../lib/profit'
@@ -39,6 +40,7 @@ export function ItemLookup() {
 
     try {
       const commerce = await fetchCommercePrice(item.id)
+      recordPriceSnapshot(commerce)
       setPrice(commerce)
     } catch (err) {
       setPrice(null)
