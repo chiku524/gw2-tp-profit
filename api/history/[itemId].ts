@@ -1,6 +1,4 @@
-import { kv } from '@vercel/kv'
-
-type Snapshot = { t: number; buy: number; sell: number }
+import { readPriceHistory } from '../lib/redis.js'
 
 export default async function handler(request: Request): Promise<Response> {
   const url = new URL(request.url)
@@ -12,17 +10,7 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   try {
-    const raw = await kv.lrange(`price:${itemId}`, 0, 200)
-    const history = raw
-      .map((row) => {
-        try {
-          return JSON.parse(String(row)) as Snapshot
-        } catch {
-          return null
-        }
-      })
-      .filter((row): row is Snapshot => row !== null && typeof row.t === 'number')
-      .reverse()
+    const history = await readPriceHistory(Number(itemId), 200)
     return Response.json(history)
   } catch {
     return Response.json([])

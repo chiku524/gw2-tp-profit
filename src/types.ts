@@ -164,3 +164,32 @@ export type CraftingResult = {
   listingProfit: number
   disciplines: string[]
 }
+
+export type Gw2CharacterBag = {
+  id: number
+  size: number
+  inventory: (Gw2InventoryItem | null)[]
+}
+
+export type Gw2InventoryItem = {
+  id: number
+  count: number
+  binding?: string
+  bound_to?: string
+  upgrades?: number[]
+  infusions?: number[]
+  skin?: number
+}
+
+export type Gw2CharacterEquipment = Gw2InventoryItem & {
+  slot: string
+  location?: string
+}
+
+export type Gw2Character = {
+  name: string
+  crafting: { discipline: string; rating: number; active: boolean }[]
+  equipment: Gw2CharacterEquipment[]
+  bags: (Gw2CharacterBag | null)[]
+  last_modified?: string
+}

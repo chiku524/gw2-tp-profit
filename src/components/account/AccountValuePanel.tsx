@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useApiKey } from '../../context/ApiKeyProvider'
 import { calculateAccountValue, type AccountValueBreakdown } from '../../lib/accountValue'
 import { formatCoins } from '../../lib/coins'
+import { FEATURE_REQUIREMENTS } from '../../lib/permissions'
 
 const PART_LABELS: Record<string, string> = {
   wallet: 'Wallet',
@@ -9,6 +10,7 @@ const PART_LABELS: Record<string, string> = {
   materials: 'Materials',
   commerce: 'Trading post',
   shared: 'Shared slots',
+  characters: 'Characters',
 }
 
 export function AccountValuePanel() {
@@ -16,6 +18,10 @@ export function AccountValuePanel() {
   const [data, setData] = useState<AccountValueBreakdown | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const missingForFull = FEATURE_REQUIREMENTS.accountValue.filter(
+    (permission) => !(tokenInfo?.permissions ?? []).includes(permission),
+  )
 
   const load = useCallback(async () => {
     if (!apiKey || !canUse('orders')) return
@@ -51,6 +57,12 @@ export function AccountValuePanel() {
         </button>
       </div>
 
+      {missingForFull.length > 0 ? (
+        <p className="hint">
+          For full scans (including character bags), add: {missingForFull.join(', ')}.
+        </p>
+      ) : null}
+
       <p className="hint">{data?.note ?? 'Powered by gw2efficiency account-value for storage you expose via API.'}</p>
       {error ? <p className="error">{error}</p> : null}
 
@@ -85,9 +97,15 @@ export function AccountValuePanel() {
             ) : null}
             {data.gw2eSummary !== null ? (
               <div>
-                <span>gw2efficiency partial</span>
+                <span>gw2efficiency total</span>
                 <strong className="profit">{formatCoins(data.gw2eSummary)}</strong>
-                {data.partial ? <small>excludes characters</small> : null}
+                {data.partial ? <small>partial scan</small> : <small>full storage scan</small>}
+              </div>
+            ) : null}
+            {data.charactersIncluded ? (
+              <div>
+                <span>Characters scanned</span>
+                <strong>{data.characterCount}</strong>
               </div>
             ) : null}
           </div>

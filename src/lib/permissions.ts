@@ -30,6 +30,7 @@ export const FEATURE_REQUIREMENTS = {
   delivery: ['account', 'tradingpost'] as const,
   history: ['account', 'tradingpost'] as const,
   craftingBank: ['account', 'inventories'] as const,
+  accountValue: ['account', 'wallet', 'tradingpost', 'inventories', 'characters'] as const,
 }
 
 export function missingPermissions(

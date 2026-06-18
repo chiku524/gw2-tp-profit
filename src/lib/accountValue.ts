@@ -1,12 +1,14 @@
 import accountValue, { allItemIds } from 'gw2e-account-value'
 import {
-  fetchBankItemCounts,
+  fetchCharacterNames,
+  fetchCharacters,
   fetchCommercePrices,
   fetchCurrentOrders,
   fetchDelivery,
 } from './gw2Api'
 import { gw2Fetch } from './gw2Fetch'
 import { EXCHANGE_FEE_RATE } from './profit'
+import type { Gw2Character } from '../types'
 
 type WalletCurrency = { id: number; value: number }
 type InventorySlot = { id: number; count: number }
@@ -26,6 +28,8 @@ export type AccountValueBreakdown = {
   storageEstimate: number | null
   gw2eSummary: number | null
   gw2eParts: Record<string, number | null>
+  characterCount: number
+  charactersIncluded: boolean
   partial: boolean
   note: string
 }
@@ -61,6 +65,19 @@ function buildItemValues(
   return values
 }
 
+async function loadCharacters(
+  accessToken: string,
+  hasCharacters: boolean,
+  hasInventories: boolean,
+): Promise<Gw2Character[]> {
+  if (!hasCharacters || !hasInventories) return []
+
+  const names = await fetchCharacterNames(accessToken)
+  if (names.length === 0) return []
+
+  return fetchCharacters(accessToken, names)
+}
+
 export async function calculateAccountValue(
   accessToken: string,
   permissions: Set<string>,
@@ -68,14 +85,16 @@ export async function calculateAccountValue(
   const hasWallet = permissions.has('wallet')
   const hasTp = permissions.has('tradingpost')
   const hasInventories = permissions.has('inventories')
+  const hasCharacters = permissions.has('characters')
 
-  const [wallet, delivery, buys, sells, bank, materials] = await Promise.all([
+  const [wallet, delivery, buys, sells, bank, materials, characters] = await Promise.all([
     hasWallet ? fetchWallet(accessToken) : Promise.resolve([]),
     hasTp ? fetchDelivery(accessToken) : Promise.resolve({ coins: 0, items: [] }),
     hasTp ? fetchCurrentOrders(accessToken, 'buys') : Promise.resolve([]),
     hasTp ? fetchCurrentOrders(accessToken, 'sells') : Promise.resolve([]),
     hasInventories ? fetchBank(accessToken) : Promise.resolve([]),
     hasInventories ? fetchMaterials(accessToken) : Promise.resolve([]),
+    loadCharacters(accessToken, hasCharacters, hasInventories),
   ])
 
   const walletGold = wallet.find((row) => row.id === 1)?.value ?? 0
@@ -116,21 +135,21 @@ export async function calculateAccountValue(
       walletGold + deliveryGold + lockedInBuyOrders + sellListingsNet + deliveryItemsValue,
   }
 
+  const charactersIncluded = characters.length > 0
   let gw2eSummary: number | null = null
   const gw2eParts: Record<string, number | null> = {}
   let partial = true
   let note =
-    'Liquid TP estimate uses wallet, delivery, open orders, and delivery items at highest buy bids. Full account value excludes characters and collections.'
+    'Liquid TP estimate uses wallet, delivery, open orders, and delivery items at highest buy bids.'
 
   if (hasInventories && hasWallet && hasTp) {
     try {
-      const bankCounts = await fetchBankItemCounts(accessToken)
       const accountData = {
         wallet,
         bank,
         materials,
         shared: [] as InventorySlot[],
-        characters: [] as unknown[],
+        characters,
         skins: [] as unknown[],
         dyes: [] as unknown[],
         minis: [] as unknown[],
@@ -156,13 +175,35 @@ export async function calculateAccountValue(
         const value = (part as { value?: number } | null)?.value
         gw2eParts[key] = typeof value === 'number' ? value : null
       }
-      partial = Object.keys(bankCounts).length > 0
-      note =
-        'gw2efficiency engine on wallet, bank, materials, and trading post data. Characters, skins, and achievements are not included without deeper scans.'
+
+      if (charactersIncluded) {
+        partial = false
+        note = `gw2efficiency valuation across wallet, bank, materials, trading post, and ${characters.length} character${characters.length === 1 ? '' : 's'} (bags + equipment). Skins, achievements, and homestead are not scanned.`
+      } else if (!hasCharacters) {
+        note =
+          'Add Characters permission to include bag and equipment value. Currently: wallet, bank, materials, and trading post only.'
+      } else if (!hasInventories) {
+        note =
+          'Add Inventories permission to include bank, materials, and character bags. Currently: wallet and trading post only.'
+      } else {
+        note =
+          'gw2efficiency valuation on wallet, bank, materials, and trading post. No characters found on this account.'
+      }
     } catch {
       note = 'Could not run full gw2efficiency valuation; showing liquid estimate only.'
     }
+  } else if (!hasCharacters || !hasInventories) {
+    note += ' Add Characters + Inventories permissions for full storage and character scans.'
   }
 
-  return { liquidity, storageEstimate, gw2eSummary, gw2eParts, partial, note }
+  return {
+    liquidity,
+    storageEstimate,
+    gw2eSummary,
+    gw2eParts,
+    characterCount: characters.length,
+    charactersIncluded,
+    partial,
+    note,
+  }
 }

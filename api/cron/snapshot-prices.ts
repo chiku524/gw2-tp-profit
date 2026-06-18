@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv'
+import { pushPriceSnapshot } from '../lib/redis.js'
 
 /** Item IDs tracked by the server-side price snapshot cron. */
 const SNAPSHOT_ITEM_IDS = [
@@ -15,7 +15,9 @@ const API_BASE = 'https://api.guildwars2.com/v2'
 const BATCH = 200
 const MAX_POINTS = 500
 
-async function fetchPrices(ids: number[]): Promise<{ id: number; buys: { unit_price: number }; sells: { unit_price: number } }[]> {
+async function fetchPrices(
+  ids: number[],
+): Promise<{ id: number; buys: { unit_price: number }; sells: { unit_price: number } }[]> {
   const url = `${API_BASE}/commerce/prices?ids=${ids.join(',')}`
   const response = await fetch(url)
   if (!response.ok) throw new Error(`GW2 API HTTP ${response.status}`)
@@ -42,13 +44,12 @@ export default async function handler(request: Request): Promise<Response> {
           buy: price.sells.unit_price,
           sell: price.buys.unit_price,
         }
-        const key = `price:${price.id}`
         try {
-          await kv.lpush(key, JSON.stringify(snapshot))
-          await kv.ltrim(key, 0, MAX_POINTS - 1)
-          stored += 1
+          const ok = await pushPriceSnapshot(price.id, snapshot, MAX_POINTS)
+          if (ok) stored += 1
+          else errors.push('Redis not configured')
         } catch {
-          errors.push(`KV unavailable for item ${price.id}`)
+          errors.push(`Redis write failed for item ${price.id}`)
         }
       }
     } catch (error) {
@@ -60,6 +61,7 @@ export default async function handler(request: Request): Promise<Response> {
     ok: true,
     stored,
     tracked: SNAPSHOT_ITEM_IDS.length,
-    errors: errors.slice(0, 5),
+    redis: stored > 0,
+    errors: [...new Set(errors)].slice(0, 5),
   })
 }

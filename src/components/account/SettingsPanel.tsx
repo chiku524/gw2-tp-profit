@@ -3,7 +3,7 @@ import { useApiKey } from '../../context/ApiKeyProvider'
 import { FEATURE_REQUIREMENTS, PERMISSION_LABELS, type Gw2Permission } from '../../lib/permissions'
 import { PriceAlertsSettings } from '../PriceAlertsSettings'
 
-const RECOMMENDED: Gw2Permission[] = ['account', 'tradingpost', 'inventories', 'wallet']
+const RECOMMENDED: Gw2Permission[] = ['account', 'tradingpost', 'inventories', 'wallet', 'characters']
 
 export function SettingsPanel() {
   const { apiKey, tokenInfo, account, loading, error, setApiKey, clearKey, refresh, isConnected } =

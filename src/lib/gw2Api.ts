@@ -9,6 +9,7 @@ import type {
   Gw2Account,
   Gw2Item,
   Gw2Recipe,
+  Gw2Character,
   TokenInfo,
 } from '../types'
 
@@ -128,4 +129,27 @@ export async function fetchBankItemCounts(accessToken: string): Promise<Record<n
     counts[slot.id] = (counts[slot.id] ?? 0) + slot.count
   }
   return counts
+}
+
+export async function fetchCharacterNames(accessToken: string): Promise<string[]> {
+  return gw2FetchAllPages<string>('/characters', accessToken)
+}
+
+export async function fetchCharacters(accessToken: string, names: string[]): Promise<Gw2Character[]> {
+  if (names.length === 0) return []
+
+  const results: Gw2Character[] = []
+  const batchSize = 8
+
+  for (let index = 0; index < names.length; index += batchSize) {
+    const batch = names.slice(index, index + batchSize)
+    const ids = batch.map((name) => encodeURIComponent(name)).join(',')
+    const response = await gw2Fetch<Gw2Character[] | Gw2Character>(`/characters?ids=${ids}`, {
+      accessToken,
+    })
+    const characters = Array.isArray(response) ? response : [response]
+    results.push(...characters)
+  }
+
+  return results
 }
