@@ -149,7 +149,7 @@ function App() {
         </p>
       </footer>
 
-      <ItemDetailModal onOpenCrafting={openCraftingForItem} />
+      <ItemDetailModal onOpenCrafting={openCraftingForItem} onGoCrafts={() => goTab('crafts')} />
       <CommandPalette onNavigate={navigate} />
       <MobileNav active={tab} onNavigate={goTab} />
     </div>

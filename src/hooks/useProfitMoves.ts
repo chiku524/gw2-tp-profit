@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { useCraftingContext } from './useCraftingContext'
 import {
   defaultProfitMoveFilters,
   scanProfitMoves,
@@ -18,10 +19,16 @@ type ScanProgress = {
 function loadFilters(): ProfitMoveFilters {
   const saved = loadProfitMoveFilters()
   if (!saved) return defaultProfitMoveFilters
-  return { ...defaultProfitMoveFilters, ...saved, kinds: saved.kinds ?? defaultProfitMoveFilters.kinds }
+  return {
+    ...defaultProfitMoveFilters,
+    ...saved,
+    kinds: saved.kinds ?? defaultProfitMoveFilters.kinds,
+    onlyCraftable: saved.onlyCraftable ?? defaultProfitMoveFilters.onlyCraftable,
+  }
 }
 
 export function useProfitMoves() {
+  const { context: craftingContext } = useCraftingContext()
   const [moves, setMoves] = useState<ProfitMove[]>(() => loadProfitMovesCache()?.moves ?? [])
   const [progress, setProgress] = useState<ScanProgress>({ phase: 'idle', loaded: 0, total: 0 })
   const [filters, setFiltersState] = useState<ProfitMoveFilters>(loadFilters)
@@ -47,6 +54,7 @@ export function useProfitMoves() {
           if (!abortRef.current) setProgress({ phase: 'scanning', message, loaded, total })
         },
         { get aborted() { return abortRef.current } },
+        filters.onlyCraftable ? craftingContext : null,
       )
       if (abortRef.current) return
       setMoves(results)
@@ -64,7 +72,7 @@ export function useProfitMoves() {
         message: error instanceof Error ? error.message : 'Scan failed',
       })
     }
-  }, [filters])
+  }, [filters, craftingContext])
 
   const stopScan = useCallback(() => {
     abortRef.current = true

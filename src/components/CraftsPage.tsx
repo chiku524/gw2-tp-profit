@@ -1,10 +1,16 @@
 import { useEffect } from 'react'
 import { ProfitMovesTable } from './ProfitMovesTable'
+import { PermissionHint } from './PermissionGate'
 import { defaultProfitMoveFilters, useProfitMoves } from '../hooks/useProfitMoves'
+import { useApiKey } from '../context/ApiKeyProvider'
+import { useCraftingContext } from '../hooks/useCraftingContext'
+import { craftingLevelSummary } from '../lib/recipeAccess'
 import { saveProfitMovesCache } from '../lib/preferences'
 import type { ProfitMoveFilters, ProfitMoveKind } from '../types'
 
 export function CraftsPage() {
+  const { canUse, isConnected } = useApiKey()
+  const { context: craftingContext } = useCraftingContext()
   const { moves, progress, filters, setFilters, runScan, stopScan, isScanning } = useProfitMoves()
 
   useEffect(() => {
@@ -14,6 +20,7 @@ export function CraftsPage() {
   }, [progress.phase, moves])
 
   const progressPercent = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0
+  const levelSummary = craftingLevelSummary(craftingContext)
 
   const toggleKind = (kind: ProfitMoveKind) => {
     setFilters((current) => {
@@ -33,6 +40,9 @@ export function CraftsPage() {
             assumes you buy ingredients at lowest sell and list the output undercutting lowest sell (−1c), including
             5% listing + 10% exchange fees.
           </p>
+          {isConnected && levelSummary ? (
+            <p className="hint">Your highest crafting levels: {levelSummary}</p>
+          ) : null}
         </div>
       </div>
 
@@ -87,6 +97,26 @@ export function CraftsPage() {
           />
         </div>
       </div>
+
+      {isConnected ? (
+        canUse('recipeUnlocks') && canUse('craftingLevels') ? (
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={filters.onlyCraftable}
+              onChange={(event) => setFilters({ ...filters, onlyCraftable: event.target.checked })}
+            />
+            Only combines I can craft (discovered recipes + character level)
+          </label>
+        ) : (
+          <PermissionHint feature="recipeUnlocks" compact />
+        )
+      ) : (
+        <p className="hint">
+          Connect an API key with Unlocks + Characters permissions to filter results to recipes your account can
+          actually craft.
+        </p>
+      )}
 
       <div className="actions">
         <button type="button" className="primary" disabled={isScanning} onClick={() => void runScan()}>

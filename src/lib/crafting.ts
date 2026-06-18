@@ -2,13 +2,21 @@ import { nestRecipes } from '@gw2efficiency/recipe-nesting'
 import { cheapestTree, useVendorPrices } from '@gw2efficiency/recipe-calculation'
 import {
   fetchBankItemCounts,
-  fetchCommercePrice,
+  fetchCommercePrices,
   fetchRecipes,
   searchRecipesByOutput,
 } from './gw2Api'
 import { listingFlipProfit } from './profit'
 import { suggestUndercutSell } from './marketMath'
+import { isRecipeCraftable, type CraftingContext } from './recipeAccess'
 import type { CraftingResult, Gw2Recipe } from '../types'
+
+export type CraftingAnalysisOptions = {
+  useBank: boolean
+  onlyKnownRecipes?: boolean
+  onlyCraftableLevel?: boolean
+  craftingContext?: CraftingContext | null
+}
 
 type RecipeTreeNode = {
   id: number
@@ -55,9 +63,26 @@ export async function calculateCraftingProfits(
   outputItemName: string,
   icon: string | undefined,
   accessToken: string | null,
-  useBank: boolean,
+  options: CraftingAnalysisOptions,
 ): Promise<CraftingResult[]> {
-  const recipes = await collectRecipesForItem(outputItemId)
+  const {
+    useBank,
+    onlyKnownRecipes = false,
+    onlyCraftableLevel = false,
+    craftingContext = null,
+  } = options
+
+  let recipes = await collectRecipesForItem(outputItemId)
+  if (recipes.length === 0) return []
+
+  if (craftingContext && (onlyKnownRecipes || onlyCraftableLevel)) {
+    recipes = recipes.filter((recipe) =>
+      isRecipeCraftable(recipe, craftingContext, {
+        requireUnlock: onlyKnownRecipes,
+        requireLevel: onlyCraftableLevel,
+      }),
+    )
+  }
   if (recipes.length === 0) return []
 
   const nested = nestRecipes(recipes as Parameters<typeof nestRecipes>[0])
@@ -71,12 +96,11 @@ export async function calculateCraftingProfits(
     }
   }
 
-  const prices = await Promise.all([...itemIds].map((id) => fetchCommercePrice(id).catch(() => null)))
+  const prices = await fetchCommercePrices([...itemIds])
   const buyPrices: Record<number, number> = {}
   const sellPrices: Record<number, number> = {}
 
   for (const price of prices) {
-    if (!price) continue
     if (price.sells.unit_price > 0) buyPrices[price.id] = price.sells.unit_price
     if (price.buys.unit_price > 0) sellPrices[price.id] = price.buys.unit_price
   }

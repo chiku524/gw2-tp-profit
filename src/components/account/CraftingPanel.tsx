@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApiKey } from '../../context/ApiKeyProvider'
+import { PermissionHint } from '../PermissionGate'
+import { useCraftingContext } from '../../hooks/useCraftingContext'
 import { formatCoins } from '../../lib/coins'
 import { calculateCraftingProfits } from '../../lib/crafting'
+import { craftingLevelSummary } from '../../lib/recipeAccess'
 import { searchItems } from '../../lib/gw2Api'
 import type { CraftingResult, Gw2Item } from '../../types'
 
@@ -12,11 +15,14 @@ type Props = {
 
 export function CraftingPanel({ preloadItem, onPreloadConsumed }: Props) {
   const { apiKey, canUse } = useApiKey()
+  const { context: craftingContext } = useCraftingContext()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Gw2Item[]>([])
   const [selected, setSelected] = useState<Gw2Item | null>(null)
   const [craftResults, setCraftResults] = useState<CraftingResult[]>([])
   const [useBank, setUseBank] = useState(true)
+  const [onlyKnownRecipes, setOnlyKnownRecipes] = useState(false)
+  const [onlyCraftableLevel, setOnlyCraftableLevel] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const lastPreloadId = useRef<number | null>(null)
@@ -48,16 +54,19 @@ export function CraftingPanel({ preloadItem, onPreloadConsumed }: Props) {
       setError(null)
 
       try {
-        const profits = await calculateCraftingProfits(
-          item.id,
-          item.name,
-          item.icon,
-          apiKey || null,
-          useBank && canUse('craftingBank'),
-        )
+        const profits = await calculateCraftingProfits(item.id, item.name, item.icon, apiKey || null, {
+          useBank: useBank && canUse('craftingBank'),
+          onlyKnownRecipes: onlyKnownRecipes && canUse('recipeUnlocks'),
+          onlyCraftableLevel: onlyCraftableLevel && canUse('craftingLevels'),
+          craftingContext,
+        })
         setCraftResults(profits)
         if (profits.length === 0) {
-          setError('No craftable recipes found for this item on the trading post.')
+          setError(
+            onlyKnownRecipes || onlyCraftableLevel
+              ? 'No craftable recipes match your filters. Try disabling recipe or level filters.'
+              : 'No craftable recipes found for this item on the trading post.',
+          )
         }
       } catch (err) {
         setCraftResults([])
@@ -66,7 +75,7 @@ export function CraftingPanel({ preloadItem, onPreloadConsumed }: Props) {
         setLoading(false)
       }
     },
-    [apiKey, canUse, useBank],
+    [apiKey, canUse, useBank, onlyKnownRecipes, onlyCraftableLevel, craftingContext],
   )
 
   useEffect(() => {
@@ -76,6 +85,8 @@ export function CraftingPanel({ preloadItem, onPreloadConsumed }: Props) {
     onPreloadConsumed?.()
   }, [preloadItem, onPreloadConsumed, analyze])
 
+  const levelSummary = craftingLevelSummary(craftingContext)
+
   return (
     <section className="panel">
       <h2>Crafting profit</h2>
@@ -83,6 +94,10 @@ export function CraftingPanel({ preloadItem, onPreloadConsumed }: Props) {
         Uses gw2efficiency&apos;s recipe engine to find the cheapest craft tree, then compares cost to current
         trading post prices. Vendor prices and daily cooldowns are included automatically.
       </p>
+
+      {levelSummary ? (
+        <p className="hint">Your highest crafting levels: {levelSummary}</p>
+      ) : null}
 
       <div className="field">
         <label htmlFor="craft-search">Craftable item</label>
@@ -94,18 +109,46 @@ export function CraftingPanel({ preloadItem, onPreloadConsumed }: Props) {
         />
       </div>
 
-      {canUse('craftingBank') ? (
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={useBank}
-            onChange={(event) => setUseBank(event.target.checked)}
-          />
-          Subtract bank &amp; material storage (requires Inventories permission)
-        </label>
-      ) : (
-        <p className="hint">Add Inventories permission to factor in materials you already own.</p>
-      )}
+      <div className="craft-options">
+        {canUse('craftingBank') ? (
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={useBank}
+              onChange={(event) => setUseBank(event.target.checked)}
+            />
+            Subtract bank &amp; material storage
+          </label>
+        ) : (
+          <PermissionHint feature="craftingBank" compact />
+        )}
+
+        {canUse('recipeUnlocks') ? (
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={onlyKnownRecipes}
+              onChange={(event) => setOnlyKnownRecipes(event.target.checked)}
+            />
+            Only recipes I&apos;ve discovered
+          </label>
+        ) : (
+          <PermissionHint feature="recipeUnlocks" compact />
+        )}
+
+        {canUse('craftingLevels') ? (
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={onlyCraftableLevel}
+              onChange={(event) => setOnlyCraftableLevel(event.target.checked)}
+            />
+            Only recipes my characters can craft
+          </label>
+        ) : (
+          <PermissionHint feature="craftingLevels" compact />
+        )}
+      </div>
 
       {results.length > 0 ? (
         <ul className="search-results">

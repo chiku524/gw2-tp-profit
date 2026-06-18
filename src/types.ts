@@ -215,6 +215,7 @@ export type ProfitMoveFilters = {
   minRoi: number
   kinds: ProfitMoveKind[]
   maxResults: number
+  onlyCraftable: boolean
 }
 
 export type Gw2CharacterBag = {

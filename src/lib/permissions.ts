@@ -31,6 +31,18 @@ export const FEATURE_REQUIREMENTS = {
   history: ['account', 'tradingpost'] as const,
   craftingBank: ['account', 'inventories'] as const,
   accountValue: ['account', 'wallet', 'tradingpost', 'inventories', 'characters'] as const,
+  recipeUnlocks: ['account', 'unlocks'] as const,
+  craftingLevels: ['account', 'characters'] as const,
+}
+
+export const FEATURE_LABELS: Record<keyof typeof FEATURE_REQUIREMENTS, string> = {
+  orders: 'My orders & undercut alerts',
+  delivery: 'Delivery box',
+  history: 'P&L history & FIFO matcher',
+  craftingBank: 'Bank materials in craft profit',
+  accountValue: 'Full account valuation',
+  recipeUnlocks: 'Filter to discovered recipes',
+  craftingLevels: 'Character crafting level checks',
 }
 
 export function missingPermissions(

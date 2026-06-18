@@ -697,6 +697,83 @@ footer {
   margin-top: 0;
 }
 
+.permission-hint-panel {
+  border: 1px solid rgba(240, 179, 93, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.permission-hint {
+  margin: 0.35rem 0;
+}
+
+.craft-options {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.api-guide {
+  margin-top: 1.25rem;
+}
+
+.api-guide-panel {
+  margin-top: 0.65rem;
+}
+
+.api-guide-panel .table-wrap {
+  margin-top: 0.5rem;
+}
+
+.profit-move-teaser {
+  border: 1px solid rgba(159, 212, 255, 0.2);
+  background: rgba(159, 212, 255, 0.06);
+  border-radius: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.profit-move-teaser h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.mobile-nav-more {
+  position: relative;
+}
+
+.mobile-more-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.35rem);
+  min-width: 9rem;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.4rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(240, 179, 93, 0.2);
+  background: #1a1510;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  z-index: 30;
+}
+
+.mobile-more-menu button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+
+.mobile-more-menu button.active,
+.mobile-more-menu button:hover {
+  background: rgba(196, 122, 44, 0.22);
+}
+
 .preset-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

@@ -81,7 +81,7 @@ export async function fetchRecipesBatched(
     const batch = ids.slice(index, index + BATCH_SIZE)
     results.push(...(await fetchRecipes(batch)))
     onProgress?.(Math.min(index + batch.length, ids.length), ids.length)
-    await new Promise((resolve) => window.setTimeout(resolve, 80))
+    await new Promise((resolve) => window.setTimeout(resolve, 40))
   }
   return results
 }
@@ -151,6 +151,10 @@ export async function fetchBankItemCounts(accessToken: string): Promise<Record<n
 
 export async function fetchCharacterNames(accessToken: string): Promise<string[]> {
   return gw2FetchAllPages<string>('/characters', accessToken)
+}
+
+export async function fetchAccountRecipes(accessToken: string): Promise<number[]> {
+  return gw2Fetch<number[]>('/account/recipes', { accessToken })
 }
 
 export async function fetchCharacters(accessToken: string, names: string[]): Promise<Gw2Character[]> {

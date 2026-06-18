@@ -1,5 +1,6 @@
 import accountValue, { allItemIds } from 'gw2e-account-value'
 import {
+  fetchAccountRecipes,
   fetchCharacterNames,
   fetchCharacters,
   fetchCommercePrices,
@@ -86,8 +87,9 @@ export async function calculateAccountValue(
   const hasTp = permissions.has('tradingpost')
   const hasInventories = permissions.has('inventories')
   const hasCharacters = permissions.has('characters')
+  const hasUnlocks = permissions.has('unlocks')
 
-  const [wallet, delivery, buys, sells, bank, materials, characters] = await Promise.all([
+  const [wallet, delivery, buys, sells, bank, materials, characters, recipes] = await Promise.all([
     hasWallet ? fetchWallet(accessToken) : Promise.resolve([]),
     hasTp ? fetchDelivery(accessToken) : Promise.resolve({ coins: 0, items: [] }),
     hasTp ? fetchCurrentOrders(accessToken, 'buys') : Promise.resolve([]),
@@ -95,6 +97,7 @@ export async function calculateAccountValue(
     hasInventories ? fetchBank(accessToken) : Promise.resolve([]),
     hasInventories ? fetchMaterials(accessToken) : Promise.resolve([]),
     loadCharacters(accessToken, hasCharacters, hasInventories),
+    hasUnlocks ? fetchAccountRecipes(accessToken).catch(() => []) : Promise.resolve([]),
   ])
 
   const walletGold = wallet.find((row) => row.id === 1)?.value ?? 0
@@ -154,7 +157,7 @@ export async function calculateAccountValue(
         dyes: [] as unknown[],
         minis: [] as unknown[],
         outfits: [] as unknown[],
-        recipes: [] as unknown[],
+        recipes: recipes.map((id) => ({ id })),
         finishers: [] as unknown[],
         commerce: { buys, sells },
         delivery,

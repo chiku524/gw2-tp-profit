@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
 import { copyText } from '../lib/clipboard'
@@ -18,6 +18,8 @@ import {
   suggestUndercutSell,
 } from '../lib/marketMath'
 import { fetchPriceHistory, type PriceSnapshot } from '../lib/priceHistory'
+import { loadProfitMovesCache } from '../lib/preferences'
+import { formatProfitMoveInputs, kindLabel } from '../lib/profitMoves'
 import {
   instantFlipProfit,
   spreadListingFlipProfit,
@@ -30,9 +32,10 @@ import { PriceHistoryChart } from './PriceHistoryChart'
 
 type Props = {
   onOpenCrafting?: (item: Gw2Item) => void
+  onGoCrafts?: () => void
 }
 
-export function ItemDetailModal({ onOpenCrafting }: Props) {
+export function ItemDetailModal({ onOpenCrafting, onGoCrafts }: Props) {
   const { item, closeItem } = useItemDetail()
   const { isWatched, toggle } = useWatchlist()
   const [details, setDetails] = useState<Gw2Item | null>(null)
@@ -87,6 +90,14 @@ export function ItemDetailModal({ onOpenCrafting }: Props) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [closeItem])
+
+  const profitMove = useMemo(() => {
+    if (!item) return null
+    const cached = loadProfitMovesCache()?.moves ?? []
+    const asOutput = cached.find((move) => move.outputItemId === item.id)
+    if (asOutput) return asOutput
+    return cached.find((move) => move.inputs.some((input) => input.itemId === item.id)) ?? null
+  }, [item?.id])
 
   if (!item) return null
 
@@ -181,6 +192,31 @@ export function ItemDetailModal({ onOpenCrafting }: Props) {
                 </small>
               </div>
             </div>
+
+            {profitMove ? (
+              <section className="profit-move-teaser">
+                <h3>Profitable combine</h3>
+                <p className="hint">
+                  <span className={`badge subtle kind-${profitMove.kind}`}>{kindLabel(profitMove.kind)}</span>{' '}
+                  {formatProfitMoveInputs(profitMove)} →{' '}
+                  {profitMove.outputCount > 1 ? `${profitMove.outputCount}× ` : ''}
+                  {profitMove.outputItemName}
+                </p>
+                <p>
+                  Est. profit per craft:{' '}
+                  <strong className="profit">{formatCoins(profitMove.listingProfit)}</strong>
+                  {onGoCrafts ? (
+                    <>
+                      {' '}
+                      ·{' '}
+                      <button type="button" className="link-button" onClick={onGoCrafts}>
+                        View all crafts
+                      </button>
+                    </>
+                  ) : null}
+                </p>
+              </section>
+            ) : null}
 
             <section className="suggest-row">
               <h3>Suggested prices</h3>

@@ -1,15 +1,30 @@
 import { useState } from 'react'
 import { useApiKey } from '../../context/ApiKeyProvider'
-import { FEATURE_REQUIREMENTS, PERMISSION_LABELS, type Gw2Permission } from '../../lib/permissions'
+import { FEATURE_LABELS, FEATURE_REQUIREMENTS, PERMISSION_LABELS, type Gw2Permission } from '../../lib/permissions'
 import { PriceAlertsSettings } from '../PriceAlertsSettings'
 
-const RECOMMENDED: Gw2Permission[] = ['account', 'tradingpost', 'inventories', 'wallet', 'characters']
+const RECOMMENDED: Gw2Permission[] = [
+  'account',
+  'tradingpost',
+  'inventories',
+  'wallet',
+  'characters',
+  'unlocks',
+]
+
+const API_CAPABILITIES = [
+  { area: 'Trading Post', public: 'Live prices, listings, gem exchange', auth: 'Your orders, delivery, 90-day history' },
+  { area: 'Crafting', public: 'All recipes & combine scans', auth: 'Discovered recipes, character crafting levels' },
+  { area: 'Account value', public: '—', auth: 'Wallet, bank, materials, character bags & equipment' },
+  { area: 'Not available', public: 'Place/cancel orders, move items, live map events', auth: 'Other players\' private data' },
+]
 
 export function SettingsPanel() {
   const { apiKey, tokenInfo, account, loading, error, setApiKey, clearKey, refresh, isConnected } =
     useApiKey()
   const [draft, setDraft] = useState(apiKey)
   const [saving, setSaving] = useState(false)
+  const [showApiGuide, setShowApiGuide] = useState(false)
 
   const save = async () => {
     setSaving(true)
@@ -81,7 +96,7 @@ export function SettingsPanel() {
             {RECOMMENDED.map((permission) => (
               <li key={permission} className={granted.has(permission) ? 'ok' : 'missing'}>
                 {PERMISSION_LABELS[permission]}
-                {granted.has(permission) ? ' ✓' : ' — missing'}
+                {granted.has(permission) ? ' ✓' : ' — add for more features'}
               </li>
             ))}
           </ul>
@@ -95,7 +110,8 @@ export function SettingsPanel() {
                 )
                 return (
                   <li key={feature} className={missing.length === 0 ? 'ok' : 'missing'}>
-                    {feature}: {missing.length === 0 ? 'ready' : `needs ${missing.join(', ')}`}
+                    {FEATURE_LABELS[feature]}
+                    {missing.length === 0 ? ' — ready' : ` — needs ${missing.join(', ')}`}
                   </li>
                 )
               },
@@ -103,6 +119,44 @@ export function SettingsPanel() {
           </ul>
         </div>
       ) : null}
+
+      <div className="api-guide">
+        <button type="button" className="link-button" onClick={() => setShowApiGuide((value) => !value)}>
+          {showApiGuide ? 'Hide' : 'What can the GW2 API do?'}
+        </button>
+        {showApiGuide ? (
+          <div className="api-guide-panel">
+            <p className="hint">
+              The official API is read-only. This app uses it for market research and account dashboards — it
+              cannot place orders or craft for you.
+            </p>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Area</th>
+                    <th>Without key</th>
+                    <th>With your key</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {API_CAPABILITIES.map((row) => (
+                    <tr key={row.area}>
+                      <td>{row.area}</td>
+                      <td>{row.public}</td>
+                      <td>{row.auth}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="hint">
+              Rate limit: ~300 requests/minute per IP. Keys cannot be edited — recreate the key to change
+              permissions.
+            </p>
+          </div>
+        ) : null}
+      </div>
 
       <PriceAlertsSettings />
     </section>

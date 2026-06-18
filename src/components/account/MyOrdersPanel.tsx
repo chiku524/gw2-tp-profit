@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useApiKey } from '../../context/ApiKeyProvider'
 import { useItemDetail } from '../../context/ItemDetailProvider'
 import { formatCoins } from '../../lib/coins'
-import { fetchCommercePrice, fetchCurrentOrders, fetchItems } from '../../lib/gw2Api'
+import { fetchCommercePrices, fetchCurrentOrders, fetchItems } from '../../lib/gw2Api'
 import type { CommerceTransaction, OrderRow } from '../../types'
 
 function orderStatus(
@@ -28,11 +28,11 @@ async function enrichOrders(
   const itemIds = [...new Set(orders.map((order) => order.item_id))]
   const [items, prices] = await Promise.all([
     fetchItems(itemIds),
-    Promise.all(itemIds.map((id) => fetchCommercePrice(id).catch(() => null))),
+    fetchCommercePrices(itemIds),
   ])
 
   const itemMap = new Map(items.map((item) => [item.id, item]))
-  const priceMap = new Map(prices.filter(Boolean).map((price) => [price!.id, price!]))
+  const priceMap = new Map(prices.map((price) => [price.id, price]))
 
   return orders.map((order) => {
     const item = itemMap.get(order.item_id)

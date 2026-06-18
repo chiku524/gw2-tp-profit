@@ -6,6 +6,7 @@ import {
 import { fetchItemsBatched } from './itemNames'
 import { suggestUndercutSell } from './marketMath'
 import { listingFlipProfit, roi } from './profit'
+import { isRecipeCraftable, type CraftingContext } from './recipeAccess'
 import type {
   CommercePrice,
   Gw2Item,
@@ -27,6 +28,7 @@ export const defaultProfitMoveFilters: ProfitMoveFilters = {
   minRoi: 2,
   kinds: ['refinement', 'craft'],
   maxResults: 80,
+  onlyCraftable: false,
 }
 
 function profitMoveFromRecipe(
@@ -85,6 +87,7 @@ export async function scanProfitMoves(
   filters: ProfitMoveFilters,
   onProgress?: (message: string, loaded: number, total: number) => void,
   signal?: { aborted: boolean },
+  craftingContext?: CraftingContext | null,
 ): Promise<ProfitMove[]> {
   onProgress?.('Loading recipe list…', 0, 1)
   const recipeIds = await fetchRecipeIds()
@@ -126,6 +129,17 @@ export async function scanProfitMoves(
 
   const moves: ProfitMove[] = []
   for (const recipe of recipes) {
+    if (filters.onlyCraftable && craftingContext) {
+      if (
+        !isRecipeCraftable(recipe, craftingContext, {
+          requireUnlock: true,
+          requireLevel: true,
+        })
+      ) {
+        continue
+      }
+    }
+
     const move = profitMoveFromRecipe(recipe, priceMap, itemMap)
     if (!move) continue
     if (!filters.kinds.includes(move.kind)) continue

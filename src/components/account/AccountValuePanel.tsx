@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useApiKey } from '../../context/ApiKeyProvider'
 import { calculateAccountValue, type AccountValueBreakdown } from '../../lib/accountValue'
 import { formatCoins } from '../../lib/coins'
-import { FEATURE_REQUIREMENTS } from '../../lib/permissions'
 
 const PART_LABELS: Record<string, string> = {
   wallet: 'Wallet',
@@ -14,17 +13,16 @@ const PART_LABELS: Record<string, string> = {
 }
 
 export function AccountValuePanel() {
-  const { apiKey, tokenInfo, canUse } = useApiKey()
+  const { apiKey, tokenInfo, canUse, missingFor } = useApiKey()
   const [data, setData] = useState<AccountValueBreakdown | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const missingForFull = FEATURE_REQUIREMENTS.accountValue.filter(
-    (permission) => !(tokenInfo?.permissions ?? []).includes(permission),
-  )
+  const missingForFull = missingFor('accountValue')
+  const canRunPartial = canUse('orders')
 
   const load = useCallback(async () => {
-    if (!apiKey || !canUse('orders')) return
+    if (!apiKey || !canRunPartial) return
     setLoading(true)
     setError(null)
     try {
@@ -36,16 +34,14 @@ export function AccountValuePanel() {
     } finally {
       setLoading(false)
     }
-  }, [apiKey, canUse, tokenInfo?.permissions])
+  }, [apiKey, canRunPartial, tokenInfo?.permissions])
 
   useEffect(() => {
     void load()
   }, [load])
 
-  if (!canUse('orders')) {
-    return (
-      <p className="empty-state">Connect an API key with Trading Post permission to estimate account value.</p>
-    )
+  if (!canRunPartial) {
+    return <p className="empty-state">Connect an API key with Trading Post permission to estimate account value.</p>
   }
 
   return (
@@ -59,7 +55,8 @@ export function AccountValuePanel() {
 
       {missingForFull.length > 0 ? (
         <p className="hint">
-          For full scans (including character bags), add: {missingForFull.join(', ')}.
+          Partial scan active. For full valuation (character bags + equipment), add:{' '}
+          {missingForFull.join(', ')}.
         </p>
       ) : null}
 
