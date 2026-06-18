@@ -273,6 +273,158 @@ footer {
   text-align: center;
 }
 
+.panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+}
+
+.connection-badge {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  color: #a9957d;
+}
+
+.connection-badge.connected {
+  color: #7dffb2;
+}
+
+.link-button {
+  border: none;
+  background: none;
+  color: #f0b35d;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.subtabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.subtabs button {
+  border: 1px solid rgba(240, 179, 93, 0.25);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  border-radius: 0.65rem;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+}
+
+.subtabs button.active {
+  background: rgba(196, 122, 44, 0.35);
+  border-color: rgba(240, 179, 93, 0.45);
+}
+
+.account-page .account-greeting {
+  margin: 0 0 1rem;
+  color: #c9b79b;
+}
+
+.permission-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.permission-list .ok {
+  color: #7dffb2;
+}
+
+.permission-list .missing {
+  color: #ff8f8f;
+}
+
+.key-status {
+  margin-top: 1.25rem;
+}
+
+.alert-banner {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 143, 143, 0.12);
+  border: 1px solid rgba(255, 143, 143, 0.25);
+  color: #ffc9c9;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.status-pill.competitive {
+  background: rgba(125, 255, 178, 0.12);
+  color: #7dffb2;
+}
+
+.status-pill.undercut,
+.status-pill.outbid {
+  background: rgba(255, 143, 143, 0.12);
+  color: #ff8f8f;
+}
+
+.delivery-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.delivery-card {
+  padding: 1rem;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.delivery-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.delivery-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.delivery-list li strong {
+  margin-left: auto;
+}
+
+.summary-grid {
+  margin: 1rem 0;
+}
+
+.top-items {
+  margin: 1rem 0;
+}
+
+.top-items h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
 @media (max-width: 720px) {
   .app {
     padding-top: 1.25rem;

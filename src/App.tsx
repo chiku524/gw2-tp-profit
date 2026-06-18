@@ -1,13 +1,17 @@
 import { useState } from 'react'
+import { AccountPage } from './components/AccountPage'
 import { FlipTable } from './components/FlipTable'
+import { SettingsPanel } from './components/account/SettingsPanel'
 import { ItemLookup, ProfitCalculator } from './components/Tools'
+import { useApiKey } from './context/ApiKeyProvider'
 import { useFlipScanner } from './hooks/useFlipScanner'
 import './App.css'
 
-type Tab = 'scanner' | 'lookup' | 'calculator'
+type Tab = 'scanner' | 'lookup' | 'calculator' | 'account' | 'settings'
 
 function App() {
   const [tab, setTab] = useState<Tab>('scanner')
+  const { isConnected, account, loading: keyLoading } = useApiKey()
   const { opportunities, progress, filters, setFilters, runScan, stopScan, isScanning } = useFlipScanner()
 
   const progressPercent =
@@ -22,6 +26,11 @@ function App() {
           <p className="lede">
             Find instant flip opportunities, inspect item spreads, and calculate net profit after ArenaNet fees.
           </p>
+          {isConnected ? (
+            <p className="connection-badge connected">Connected · {account?.name}</p>
+          ) : (
+            <p className="connection-badge">No API key · <button type="button" className="link-button" onClick={() => setTab('settings')}>Add in Settings</button></p>
+          )}
         </div>
       </header>
 
@@ -34,6 +43,12 @@ function App() {
         </button>
         <button type="button" className={tab === 'calculator' ? 'active' : ''} onClick={() => setTab('calculator')}>
           Calculator
+        </button>
+        <button type="button" className={tab === 'account' ? 'active' : ''} onClick={() => setTab('account')}>
+          Account
+        </button>
+        <button type="button" className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
+          Settings
         </button>
       </nav>
 
@@ -106,12 +121,15 @@ function App() {
 
         {tab === 'lookup' ? <ItemLookup /> : null}
         {tab === 'calculator' ? <ProfitCalculator /> : null}
+        {tab === 'account' ? <AccountPage /> : null}
+        {tab === 'settings' ? <SettingsPanel /> : null}
       </main>
 
       <footer>
         <p>
           Uses the official <a href="https://wiki.guildwars2.com/wiki/API:2" target="_blank" rel="noreferrer">Guild Wars 2 API</a>.
-          Not affiliated with ArenaNet or NCSOFT.
+          {keyLoading ? ' Validating API key…' : null}
+          {' '}Not affiliated with ArenaNet or NCSOFT.
         </p>
       </footer>
     </div>

@@ -1,0 +1,200 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useApiKey } from '../../context/ApiKeyProvider'
+import { formatCoins } from '../../lib/coins'
+import { EXCHANGE_FEE_RATE } from '../../lib/profit'
+import { fetchHistoryOrders, fetchItems } from '../../lib/gw2Api'
+import type { CommerceTransaction, HistorySummary } from '../../types'
+
+type HistoryRow = CommerceTransaction & {
+  side: 'buy' | 'sell'
+  itemName: string
+  icon?: string
+  total: number
+  netTotal: number
+}
+
+function summarize(buys: CommerceTransaction[], sells: CommerceTransaction[]): HistorySummary {
+  const buySpend = buys.reduce((sum, row) => sum + row.price * row.quantity, 0)
+  const sellRevenueGross = sells.reduce((sum, row) => sum + row.price * row.quantity, 0)
+  const sellRevenueNet = sells.reduce(
+    (sum, row) => sum + row.price * row.quantity * (1 - EXCHANGE_FEE_RATE),
+    0,
+  )
+
+  return {
+    buySpend,
+    sellRevenueGross,
+    sellRevenueNet,
+    estimatedNet: sellRevenueNet - buySpend,
+    buyCount: buys.length,
+    sellCount: sells.length,
+  }
+}
+
+export function HistoryPanel() {
+  const { apiKey, canUse } = useApiKey()
+  const [rows, setRows] = useState<HistoryRow[]>([])
+  const [summary, setSummary] = useState<HistorySummary | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    if (!apiKey || !canUse('history')) return
+    setLoading(true)
+    setError(null)
+
+    try {
+      const [buys, sells] = await Promise.all([
+        fetchHistoryOrders(apiKey, 'buys'),
+        fetchHistoryOrders(apiKey, 'sells'),
+      ])
+
+      setSummary(summarize(buys, sells))
+
+      const itemIds = [...new Set([...buys, ...sells].map((row) => row.item_id))]
+      const items = await fetchItems(itemIds)
+      const itemMap = new Map(items.map((item) => [item.id, item]))
+
+      const enriched: HistoryRow[] = [
+        ...buys.map((row) => ({
+          ...row,
+          side: 'buy' as const,
+          itemName: itemMap.get(row.item_id)?.name ?? `Item ${row.item_id}`,
+          icon: itemMap.get(row.item_id)?.icon,
+          total: row.price * row.quantity,
+          netTotal: -(row.price * row.quantity),
+        })),
+        ...sells.map((row) => ({
+          ...row,
+          side: 'sell' as const,
+          itemName: itemMap.get(row.item_id)?.name ?? `Item ${row.item_id}`,
+          icon: itemMap.get(row.item_id)?.icon,
+          total: row.price * row.quantity,
+          netTotal: row.price * row.quantity * (1 - EXCHANGE_FEE_RATE),
+        })),
+      ]
+
+      enriched.sort((a, b) => Date.parse(b.purchased ?? b.created) - Date.parse(a.purchased ?? a.created))
+      setRows(enriched)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load transaction history')
+    } finally {
+      setLoading(false)
+    }
+  }, [apiKey, canUse])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const topItems = useMemo(() => {
+    const byItem = new Map<number, { name: string; net: number }>()
+    for (const row of rows) {
+      const current = byItem.get(row.item_id) ?? { name: row.itemName, net: 0 }
+      current.net += row.netTotal
+      byItem.set(row.item_id, current)
+    }
+    return [...byItem.entries()]
+      .map(([id, data]) => ({ id, ...data }))
+      .sort((a, b) => b.net - a.net)
+      .slice(0, 8)
+  }, [rows])
+
+  if (!canUse('history')) {
+    return (
+      <p className="empty-state">Add an API key with Trading Post permission to view your 90-day history.</p>
+    )
+  }
+
+  return (
+    <section className="panel">
+      <div className="panel-header">
+        <h2>Flip P&amp;L (90 days)</h2>
+        <button type="button" className="secondary" disabled={loading} onClick={() => void load()}>
+          {loading ? 'Loading…' : 'Refresh'}
+        </button>
+      </div>
+
+      <p className="hint">
+        ArenaNet only exposes the last 90 days of fulfilled orders. Sell revenue includes the 10% exchange fee;
+        listing fees are not included in this estimate.
+      </p>
+
+      {error ? <p className="error">{error}</p> : null}
+
+      {summary ? (
+        <div className="stat-grid summary-grid">
+          <div>
+            <span>Buy spend</span>
+            <strong className="loss">{formatCoins(summary.buySpend)}</strong>
+            <small>{summary.buyCount} orders</small>
+          </div>
+          <div>
+            <span>Sell revenue (gross)</span>
+            <strong>{formatCoins(summary.sellRevenueGross)}</strong>
+            <small>{summary.sellCount} orders</small>
+          </div>
+          <div>
+            <span>Sell revenue (after 10% tax)</span>
+            <strong>{formatCoins(summary.sellRevenueNet)}</strong>
+          </div>
+          <div>
+            <span>Estimated net</span>
+            <strong className={summary.estimatedNet >= 0 ? 'profit' : 'loss'}>
+              {formatCoins(summary.estimatedNet)}
+            </strong>
+          </div>
+        </div>
+      ) : null}
+
+      {topItems.length > 0 ? (
+        <div className="top-items">
+          <h3>Top items by net flow</h3>
+          <ul className="delivery-list">
+            {topItems.map((item) => (
+              <li key={item.id}>
+                <span>{item.name}</span>
+                <strong className={item.net >= 0 ? 'profit' : 'loss'}>{formatCoins(item.net)}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {rows.length > 0 ? (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Item</th>
+                <th>Side</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 100).map((row) => (
+                <tr key={`${row.side}-${row.id}`}>
+                  <td>{new Date(row.purchased ?? row.created).toLocaleDateString()}</td>
+                  <td className="item-cell">
+                    {row.icon ? <img src={row.icon} alt="" width={24} height={24} /> : null}
+                    <span>{row.itemName}</span>
+                  </td>
+                  <td>{row.side}</td>
+                  <td>{formatCoins(row.price)}</td>
+                  <td>{row.quantity}</td>
+                  <td className={row.netTotal >= 0 ? 'profit' : 'loss'}>{formatCoins(row.netTotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {rows.length > 100 ? <p className="hint">Showing latest 100 of {rows.length} transactions.</p> : null}
+        </div>
+      ) : !loading ? (
+        <p className="empty-state">No fulfilled transactions in the last 90 days.</p>
+      ) : null}
+    </section>
+  )
+}

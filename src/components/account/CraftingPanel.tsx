@@ -1,0 +1,147 @@
+import { useEffect, useState } from 'react'
+import { useApiKey } from '../../context/ApiKeyProvider'
+import { formatCoins } from '../../lib/coins'
+import { calculateCraftingProfits } from '../../lib/crafting'
+import { searchItems } from '../../lib/gw2Api'
+import type { CraftingResult, Gw2Item } from '../../types'
+
+export function CraftingPanel() {
+  const { apiKey, canUse } = useApiKey()
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<Gw2Item[]>([])
+  const [selected, setSelected] = useState<Gw2Item | null>(null)
+  const [craftResults, setCraftResults] = useState<CraftingResult[]>([])
+  const [useBank, setUseBank] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setResults([])
+      return
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const items = await searchItems(query)
+        setResults(items.slice(0, 10))
+      } catch {
+        setResults([])
+      }
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [query])
+
+  const analyze = async (item: Gw2Item) => {
+    setSelected(item)
+    setQuery(item.name)
+    setResults([])
+    setLoading(true)
+    setError(null)
+
+    try {
+      const profits = await calculateCraftingProfits(
+        item.id,
+        item.name,
+        item.icon,
+        apiKey || null,
+        useBank && canUse('craftingBank'),
+      )
+      setCraftResults(profits)
+      if (profits.length === 0) {
+        setError('No craftable recipes found for this item on the trading post.')
+      }
+    } catch (err) {
+      setCraftResults([])
+      setError(err instanceof Error ? err.message : 'Crafting analysis failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <section className="panel">
+      <h2>Crafting profit</h2>
+      <p className="hint">
+        Uses gw2efficiency&apos;s recipe engine to find the cheapest craft tree, then compares cost to current
+        trading post prices. Vendor prices and daily cooldowns are included automatically.
+      </p>
+
+      <div className="field">
+        <label htmlFor="craft-search">Craftable item</label>
+        <input
+          id="craft-search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="e.g. Bolt of Linen"
+        />
+      </div>
+
+      {canUse('craftingBank') ? (
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={useBank}
+            onChange={(event) => setUseBank(event.target.checked)}
+          />
+          Subtract bank &amp; material storage (requires Inventories permission)
+        </label>
+      ) : (
+        <p className="hint">Add Inventories permission to factor in materials you already own.</p>
+      )}
+
+      {results.length > 0 ? (
+        <ul className="search-results">
+          {results.map((item) => (
+            <li key={item.id}>
+              <button type="button" onClick={() => void analyze(item)}>
+                {item.icon ? <img src={item.icon} alt="" width={24} height={24} /> : null}
+                {item.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {loading ? <p className="status">Calculating cheapest craft tree…</p> : null}
+      {error ? <p className="error">{error}</p> : null}
+
+      {selected && craftResults.length > 0 ? (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Recipe</th>
+                <th>Discipline</th>
+                <th>Craft cost</th>
+                <th>TP sell value</th>
+                <th>Instant profit</th>
+                <th>Listing profit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {craftResults.map((row) => (
+                <tr key={row.recipeId}>
+                  <td className="item-cell">
+                    {row.icon ? <img src={row.icon} alt="" width={28} height={28} /> : null}
+                    <span>{row.outputItemName}</span>
+                  </td>
+                  <td>{row.disciplines.join(', ') || '—'}</td>
+                  <td>{formatCoins(row.craftCost)}</td>
+                  <td>{formatCoins(row.sellRevenue)}</td>
+                  <td className={row.instantProfit > 0 ? 'profit' : 'loss'}>
+                    {formatCoins(row.instantProfit)}
+                  </td>
+                  <td className={row.listingProfit > 0 ? 'profit' : 'loss'}>
+                    {formatCoins(row.listingProfit)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </section>
+  )
+}

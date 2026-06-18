@@ -1,42 +1,50 @@
-import type { CommercePrice, Gw2Item } from '../types'
+import { gw2Fetch, gw2FetchAllPages } from './gw2Fetch'
+import type {
+  CommerceDelivery,
+  CommercePrice,
+  CommerceTransaction,
+  Gw2Account,
+  Gw2Item,
+  Gw2Recipe,
+  TokenInfo,
+} from '../types'
 
-const API_BASE = 'https://api.guildwars2.com/v2'
 const BATCH_SIZE = 200
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`GW2 API ${response.status}: ${url}`)
-  }
-  return response.json() as Promise<T>
-}
-
 export async function fetchCommercePriceIds(): Promise<number[]> {
-  return fetchJson<number[]>(`${API_BASE}/commerce/prices`)
+  return gw2Fetch<number[]>('/commerce/prices')
 }
 
 export async function fetchCommercePrices(ids: number[]): Promise<CommercePrice[]> {
   if (ids.length === 0) return []
-  const result = await fetchJson<CommercePrice[]>(
-    `${API_BASE}/commerce/prices?ids=${ids.join(',')}`,
-  )
+  const result = await gw2Fetch<CommercePrice[]>(`/commerce/prices?ids=${ids.join(',')}`)
   return Array.isArray(result) ? result : [result]
 }
 
 export async function fetchItems(ids: number[]): Promise<Gw2Item[]> {
   if (ids.length === 0) return []
-  const result = await fetchJson<Gw2Item[]>(`${API_BASE}/items?ids=${ids.join(',')}`)
+  const result = await gw2Fetch<Gw2Item[]>(`/items?ids=${ids.join(',')}`)
   return Array.isArray(result) ? result : [result]
 }
 
 export async function searchItems(query: string): Promise<Gw2Item[]> {
   const trimmed = query.trim()
   if (trimmed.length < 2) return []
-  return fetchJson<Gw2Item[]>(`${API_BASE}/items/search?name=${encodeURIComponent(trimmed)}`)
+  return gw2Fetch<Gw2Item[]>(`/items/search?name=${encodeURIComponent(trimmed)}`)
 }
 
 export async function fetchCommercePrice(itemId: number): Promise<CommercePrice> {
-  return fetchJson<CommercePrice>(`${API_BASE}/commerce/prices/${itemId}`)
+  return gw2Fetch<CommercePrice>(`/commerce/prices/${itemId}`)
+}
+
+export async function searchRecipesByOutput(itemId: number): Promise<number[]> {
+  return gw2Fetch<number[]>(`/recipes/search?output=${itemId}`)
+}
+
+export async function fetchRecipes(ids: number[]): Promise<Gw2Recipe[]> {
+  if (ids.length === 0) return []
+  const result = await gw2Fetch<Gw2Recipe[]>(`/recipes?ids=${ids.join(',')}`)
+  return Array.isArray(result) ? result : [result]
 }
 
 export async function* batchCommercePrices(
@@ -50,4 +58,54 @@ export async function* batchCommercePrices(
     yield prices
     await new Promise((resolve) => setTimeout(resolve, 120))
   }
+}
+
+export async function fetchTokenInfo(accessToken: string): Promise<TokenInfo> {
+  return gw2Fetch<TokenInfo>('/tokeninfo', { accessToken })
+}
+
+export async function fetchAccount(accessToken: string): Promise<Gw2Account> {
+  return gw2Fetch<Gw2Account>('/account', { accessToken })
+}
+
+export async function fetchDelivery(accessToken: string): Promise<CommerceDelivery> {
+  return gw2Fetch<CommerceDelivery>('/commerce/delivery', { accessToken })
+}
+
+export async function fetchCurrentOrders(
+  accessToken: string,
+  side: 'buys' | 'sells',
+  signal?: AbortSignal,
+): Promise<CommerceTransaction[]> {
+  return gw2FetchAllPages<CommerceTransaction>(
+    `/commerce/transactions/current/${side}`,
+    accessToken,
+    signal,
+  )
+}
+
+export async function fetchHistoryOrders(
+  accessToken: string,
+  side: 'buys' | 'sells',
+  signal?: AbortSignal,
+): Promise<CommerceTransaction[]> {
+  return gw2FetchAllPages<CommerceTransaction>(
+    `/commerce/transactions/history/${side}`,
+    accessToken,
+    signal,
+  )
+}
+
+export async function fetchBankItemCounts(accessToken: string): Promise<Record<number, number>> {
+  const bank = await gw2Fetch<{ id: number; count: number }[]>('/account/bank', { accessToken })
+  const materials = await gw2Fetch<{ id: number; count: number }[]>('/account/materials', {
+    accessToken,
+  })
+
+  const counts: Record<number, number> = {}
+  for (const slot of [...bank, ...materials]) {
+    if (!slot?.id || !slot.count) continue
+    counts[slot.id] = (counts[slot.id] ?? 0) + slot.count
+  }
+  return counts
 }
