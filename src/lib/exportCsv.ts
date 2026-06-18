@@ -12,6 +12,8 @@ export function exportFlipsToCsv(rows: FlipOpportunity[]): void {
     'buy_volume',
     'sell_volume',
     'listing_profit',
+    'item_type',
+    'item_category',
   ]
 
   const lines = rows.map((row) =>
@@ -21,11 +23,13 @@ export function exportFlipsToCsv(rows: FlipOpportunity[]): void {
       row.buyPrice,
       row.sellPrice,
       row.instantProfit,
-      row.instantRoi.toFixed(2),
+      row.listingRoi.toFixed(2),
       (row.spreadPct ?? 0).toFixed(2),
       row.buyVolume,
       row.sellVolume,
       row.listingProfit,
+      row.itemType ?? '',
+      row.itemCategory ?? '',
     ].join(','),
   )
 

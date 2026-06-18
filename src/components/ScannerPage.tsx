@@ -1,3 +1,4 @@
+import { CategoryFilters } from './CategoryFilters'
 import { exportFlipsToCsv } from '../lib/exportCsv'
 import { useEffect } from 'react'
 import { FlipTable } from './FlipTable'
@@ -47,6 +48,8 @@ export function ScannerPage({ scanner, browseIds, onBrowseConsumed }: Props) {
       </div>
 
       <ScanPresets filters={filters} onApply={setFilters} />
+
+      <CategoryFilters filters={filters} onChange={setFilters} />
 
       <div className="filters">
         <div className="field">
@@ -126,7 +129,7 @@ export function ScannerPage({ scanner, browseIds, onBrowseConsumed }: Props) {
         </div>
       ) : null}
 
-      <FlipTable rows={opportunities} />
+      <FlipTable rows={opportunities} categoryFilter={filters.categories} />
     </section>
   )
 }

@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { batchCommercePrices, fetchCommercePriceIds, fetchCommercePrices } from '../lib/gw2Api'
 import { enrichFlipOpportunities } from '../lib/itemNames'
 import { loadScanFilters, saveScanFilters } from '../lib/preferences'
-import { opportunityFromPrice } from '../lib/profit'
+import { matchesFromPrices } from '../lib/scannerMatch'
 import type { FlipOpportunity, ScanFilters, ScanProgress } from '../types'
 
 export const defaultScanFilters: ScanFilters = {
@@ -11,12 +11,19 @@ export const defaultScanFilters: ScanFilters = {
   minVolume: 10,
   f2pOnly: false,
   maxItems: 100,
+  categories: [],
+}
+
+function loadFilters(): ScanFilters {
+  const saved = loadScanFilters()
+  if (!saved) return defaultScanFilters
+  return { ...defaultScanFilters, ...saved, categories: saved.categories ?? [] }
 }
 
 export function useFlipScanner() {
   const [opportunities, setOpportunities] = useState<FlipOpportunity[]>([])
   const [progress, setProgress] = useState<ScanProgress>({ phase: 'idle', totalIds: 0, loadedPrices: 0 })
-  const [filters, setFiltersState] = useState<ScanFilters>(() => loadScanFilters() ?? defaultScanFilters)
+  const [filters, setFiltersState] = useState<ScanFilters>(loadFilters)
   const abortRef = useRef(false)
   const publishGeneration = useRef(0)
 
@@ -57,6 +64,8 @@ export function useFlipScanner() {
       setProgress({ phase: 'loading-prices', totalIds: ids.length, loadedPrices: 0, message: 'Scanning prices…' })
 
       const matches: FlipOpportunity[] = []
+      const categoryNote =
+        filters.categories.length > 0 ? ` · ${filters.categories.length} categor${filters.categories.length === 1 ? 'y' : 'ies'}` : ''
 
       for await (const batch of batchCommercePrices(ids, (loaded, total) => {
         if (!abortRef.current) {
@@ -64,21 +73,14 @@ export function useFlipScanner() {
             phase: 'loading-prices',
             totalIds: total,
             loadedPrices: loaded,
-            message: `Scanning… ${matches.length} matches · ${loaded.toLocaleString()}/${total.toLocaleString()}`,
+            message: `Scanning… ${matches.length} matches${categoryNote} · ${loaded.toLocaleString()}/${total.toLocaleString()}`,
           })
         }
       })) {
         if (abortRef.current) break
 
-        for (const price of batch) {
-          if (filters.f2pOnly && !price.whitelisted) continue
-          const opportunity = opportunityFromPrice(price)
-          if (!opportunity) continue
-          if (opportunity.listingProfit < filters.minProfit) continue
-          if (opportunity.listingRoi < filters.minRoi) continue
-          if (Math.min(opportunity.buyVolume, opportunity.sellVolume) < filters.minVolume) continue
-          matches.push(opportunity)
-        }
+        const batchMatches = await matchesFromPrices(batch, filters)
+        matches.push(...batchMatches)
 
         matches.sort((a, b) => b.listingProfit - a.listingProfit)
         if (matches.length > filters.maxItems * 3) {
@@ -88,7 +90,7 @@ export function useFlipScanner() {
         if (matches.length > 0 && matches.length % 20 === 0) {
           setProgress((current) => ({
             ...current,
-            message: `Scanning… ${matches.length} matches · loading names…`,
+            message: `Scanning… ${matches.length} matches${categoryNote} · loading names…`,
           }))
           void publishMatches(matches.slice(0, filters.maxItems))
         }
@@ -110,7 +112,7 @@ export function useFlipScanner() {
         phase: 'done',
         totalIds: ids.length,
         loadedPrices: ids.length,
-        message: `Found ${top.length} opportunities`,
+        message: `Found ${top.length} opportunities${categoryNote}`,
       })
     } catch (error) {
       setProgress({
@@ -129,9 +131,7 @@ export function useFlipScanner() {
 
       try {
         const prices = await fetchCommercePrices(itemIds)
-        const matches = prices
-          .map((price) => opportunityFromPrice(price))
-          .filter((row): row is FlipOpportunity => row !== null)
+        const matches = (await matchesFromPrices(prices, { ...filters, minProfit: 0, minRoi: 0, minVolume: 0 }))
           .sort((a, b) => b.listingProfit - a.listingProfit)
 
         setProgress({
@@ -158,7 +158,7 @@ export function useFlipScanner() {
         })
       }
     },
-    [publishMatches],
+    [filters, publishMatches],
   )
 
   return {

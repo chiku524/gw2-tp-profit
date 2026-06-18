@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { enrichFlipOpportunities, isPlaceholderName } from '../lib/itemNames'
+import { enrichFlipOpportunities, isPlaceholderName, resolveItemName } from '../lib/itemNames'
 import type { FlipOpportunity } from '../types'
 
 /** Ensures displayed flip rows have resolved GW2 item names (not "Item 123"). */
@@ -28,7 +28,6 @@ export function useResolveItemName(itemId: number, fallback: string): string {
   const [name, setName] = useState(fallback)
 
   const resolve = useCallback(async () => {
-    const { resolveItemName } = await import('../lib/itemNames')
     const item = await resolveItemName(itemId)
     if (item) setName(item.name)
   }, [itemId])

@@ -98,12 +98,21 @@ export type WatchlistSnapshot = {
   spreadPct: number
 }
 
+export type ItemCategoryFilter =
+  | 'materials'
+  | 'consumables'
+  | 'gear'
+  | 'upgrades'
+  | 'containers'
+  | 'other'
+
 export type ScanFilters = {
   minProfit: number
   minRoi: number
   minVolume: number
   f2pOnly: boolean
   maxItems: number
+  categories: ItemCategoryFilter[]
 }
 
 export type FlipSortKey = 'profit' | 'roi' | 'spread' | 'volume' | 'name' | 'buy' | 'sell'
@@ -122,6 +131,8 @@ export type FlipOpportunity = {
   listingRoi: number
   whitelisted: boolean
   spreadPct?: number
+  itemType?: string
+  itemCategory?: ItemCategoryFilter
 }
 
 export type ScanProgress = {

@@ -1,3 +1,4 @@
+import { categoryForItemType } from './itemCategories'
 import { fetchItems } from './gw2Api'
 import type { FlipOpportunity, Gw2Item } from '../types'
 
@@ -49,6 +50,8 @@ export async function enrichFlipOpportunities(rows: FlipOpportunity[]): Promise<
       ...row,
       itemName: item.name,
       icon: item.icon ?? row.icon,
+      itemType: item.type ?? row.itemType,
+      itemCategory: categoryForItemType(item.type ?? row.itemType),
     }
   })
 }
