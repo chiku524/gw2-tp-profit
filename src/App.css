@@ -1,0 +1,285 @@
+:root {
+  color-scheme: dark;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #f4ead5;
+  background:
+    radial-gradient(circle at top, rgba(196, 122, 44, 0.18), transparent 40%),
+    linear-gradient(180deg, #1a1410 0%, #0d0b0a 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+a {
+  color: #f0b35d;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+.hero {
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  color: #c47a2c;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.lede {
+  max-width: 52rem;
+  color: #c9b79b;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.tabs button,
+.mode-toggle button,
+.actions button,
+.search-results button {
+  border: 1px solid rgba(240, 179, 93, 0.25);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+}
+
+.tabs button.active,
+.mode-toggle button.active,
+.actions .primary {
+  background: linear-gradient(135deg, #c47a2c, #8f4f14);
+  border-color: transparent;
+  color: #fff8ef;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.panel {
+  background: rgba(18, 14, 11, 0.82);
+  border: 1px solid rgba(240, 179, 93, 0.14);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.filters,
+.field-row,
+.stat-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.filters {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.field-row,
+.stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.field label,
+.checkbox {
+  font-size: 0.9rem;
+  color: #c9b79b;
+}
+
+.field input {
+  width: 100%;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(240, 179, 93, 0.18);
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  padding: 0.65rem 0.75rem;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.7rem;
+}
+
+.progress {
+  margin: 1rem 0;
+}
+
+.progress-bar {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c47a2c, #f0b35d);
+  transition: width 0.2s ease;
+}
+
+.progress p,
+.status,
+.hint,
+.empty-state,
+footer p {
+  color: #a9957d;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.75rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #c9b79b;
+}
+
+.item-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.badge {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(240, 179, 93, 0.12);
+  color: #f0b35d;
+}
+
+.profit {
+  color: #7dffb2;
+}
+
+.loss {
+  color: #ff8f8f;
+}
+
+.search-results {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.search-results button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 0.75rem;
+  text-align: left;
+}
+
+.item-detail header {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.item-detail h3,
+.calculator-result strong {
+  margin: 0;
+}
+
+.stat-grid strong,
+.calculator-result strong {
+  display: block;
+  font-size: 1.35rem;
+  margin-top: 0.2rem;
+}
+
+.stat-grid small,
+.calculator-result small {
+  color: #a9957d;
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.calculator-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.error {
+  color: #ff8f8f;
+}
+
+footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .app {
+    padding-top: 1.25rem;
+  }
+
+  th:nth-child(6),
+  td:nth-child(6) {
+    display: none;
+  }
+}
