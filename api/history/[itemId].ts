@@ -1,4 +1,4 @@
-import { readPriceHistory } from '../lib/redis.js'
+import { readPriceHistory } from '../lib/redis'
 
 export default async function handler(request: Request): Promise<Response> {
   const url = new URL(request.url)

@@ -1,4 +1,4 @@
-import { pushPriceSnapshot } from '../lib/redis.js'
+import { pushPriceSnapshot } from '../lib/redis'
 
 /** Item IDs tracked by the server-side price snapshot cron. */
 const SNAPSHOT_ITEM_IDS = [
