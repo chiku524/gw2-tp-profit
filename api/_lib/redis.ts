@@ -69,7 +69,3 @@ export async function readPriceHistory(itemId: number, limit: number): Promise<S
     .filter((row): row is Snapshot => row !== null)
     .reverse()
 }
-
-export function getRedisConfigured(): boolean {
-  return redisConfig() !== null
-}

@@ -6,6 +6,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/history/:itemId", "destination": "/api/history?itemId=:itemId" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
