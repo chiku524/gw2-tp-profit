@@ -3,6 +3,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
 import { evaluatePriceAlerts } from '../lib/priceAlerts'
+import { evaluateExtendedAlerts } from '../lib/alertEngine'
+import { enrichWatchlistLiquidity } from '../lib/liquidity'
+import { riskFlagsForWatchlist } from '../lib/riskFlags'
 import { formatCoins } from '../lib/coins'
 import { recordPriceSnapshots } from '../lib/priceHistory'
 import { fetchCommercePrices, fetchItems } from '../lib/gw2Api'
@@ -47,22 +50,39 @@ export function WatchlistPanel() {
         opportunities.filter((row): row is NonNullable<typeof row> => row !== null),
       )
 
-      const snapshots: WatchlistSnapshot[] = enriched.map((row) => ({
-        itemId: row.itemId,
-        name: row.itemName,
-        icon: row.icon,
-        buyPrice: row.buyPrice,
-        sellPrice: row.sellPrice,
-        instantProfit: row.instantProfit,
-        instantRoi: row.instantRoi,
-        listingProfit: row.listingProfit,
-        listingRoi: row.listingRoi,
-        spreadPct: row.spreadPct ?? 0,
-      }))
+      const snapshots: WatchlistSnapshot[] = enriched.map((row) =>
+        enrichWatchlistLiquidity({
+          itemId: row.itemId,
+          name: row.itemName,
+          icon: row.icon,
+          buyPrice: row.buyPrice,
+          sellPrice: row.sellPrice,
+          buyVolume: row.buyVolume,
+          sellVolume: row.sellVolume,
+          instantProfit: row.instantProfit,
+          instantRoi: row.instantRoi,
+          listingProfit: row.listingProfit,
+          listingRoi: row.listingRoi,
+          spreadPct: row.spreadPct ?? 0,
+          riskFlags: riskFlagsForWatchlist({
+            itemId: row.itemId,
+            name: row.itemName,
+            icon: row.icon,
+            buyPrice: row.buyPrice,
+            sellPrice: row.sellPrice,
+            instantProfit: row.instantProfit,
+            instantRoi: row.instantRoi,
+            listingProfit: row.listingProfit,
+            listingRoi: row.listingRoi,
+            spreadPct: row.spreadPct ?? 0,
+          }),
+        }),
+      )
 
       snapshots.sort((a, b) => b.listingProfit - a.listingProfit)
       setRows(snapshots)
       evaluatePriceAlerts(snapshots)
+      evaluateExtendedAlerts(snapshots)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh watchlist')
     } finally {

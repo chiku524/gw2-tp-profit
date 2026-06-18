@@ -1,11 +1,16 @@
 import type { WatchlistSnapshot } from '../types'
 
+export type PriceAlertType = 'profit' | 'price_below' | 'spread_wide' | 'undercut'
+
 export type PriceAlertRule = {
   itemId: number
   name: string
   minProfit: number
   minRoi: number
   enabled: boolean
+  alertType?: PriceAlertType
+  maxBuyPrice?: number
+  minSpreadPct?: number
 }
 
 const RULES_KEY = 'gw2-tp-price-alerts'
@@ -27,7 +32,7 @@ function writeRules(rules: PriceAlertRule[]): void {
   localStorage.setItem(RULES_KEY, JSON.stringify(rules))
 }
 
-function readCooldown(): Record<string, number> {
+export function readCooldownMap(): Record<string, number> {
   try {
     const raw = localStorage.getItem(COOLDOWN_KEY)
     if (!raw) return {}
@@ -38,7 +43,7 @@ function readCooldown(): Record<string, number> {
   }
 }
 
-function writeCooldown(map: Record<string, number>): void {
+export function writeCooldownMap(map: Record<string, number>): void {
   localStorage.setItem(COOLDOWN_KEY, JSON.stringify(map))
 }
 
@@ -52,15 +57,19 @@ export function savePriceAlertRules(rules: PriceAlertRule[]): void {
 
 export function upsertPriceAlertRule(rule: PriceAlertRule): PriceAlertRule[] {
   const rules = readRules()
-  const index = rules.findIndex((row) => row.itemId === rule.itemId)
+  const index = rules.findIndex((row) => row.itemId === rule.itemId && row.alertType === rule.alertType)
   if (index >= 0) rules[index] = rule
   else rules.push(rule)
   writeRules(rules)
   return rules
 }
 
-export function removePriceAlertRule(itemId: number): PriceAlertRule[] {
-  const rules = readRules().filter((row) => row.itemId !== itemId)
+export function removePriceAlertRule(itemId: number, alertType?: PriceAlertType): PriceAlertRule[] {
+  const rules = readRules().filter((row) => {
+    if (row.itemId !== itemId) return true
+    if (!alertType) return false
+    return (row.alertType ?? 'profit') !== alertType
+  })
   writeRules(rules)
   return rules
 }
@@ -81,10 +90,10 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 export function evaluatePriceAlerts(snapshots: WatchlistSnapshot[]): void {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
 
-  const rules = readRules().filter((rule) => rule.enabled)
+  const rules = readRules().filter((rule) => rule.enabled && (rule.alertType ?? 'profit') === 'profit')
   if (rules.length === 0) return
 
-  const cooldown = readCooldown()
+  const cooldown = readCooldownMap()
   const now = Date.now()
   let cooldownChanged = false
 
@@ -105,5 +114,5 @@ export function evaluatePriceAlerts(snapshots: WatchlistSnapshot[]): void {
     cooldownChanged = true
   }
 
-  if (cooldownChanged) writeCooldown(cooldown)
+  if (cooldownChanged) writeCooldownMap(cooldown)
 }

@@ -1,4 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { BulkCraftPlanner } from './BulkCraftPlanner'
+import { ProfitChainsPanel } from './ProfitChainsPanel'
 import { ProfitMovesTable } from './ProfitMovesTable'
 import { PermissionHint } from './PermissionGate'
 import { defaultProfitMoveFilters, useProfitMoves } from '../hooks/useProfitMoves'
@@ -6,12 +8,13 @@ import { useApiKey } from '../context/ApiKeyProvider'
 import { useCraftingContext } from '../hooks/useCraftingContext'
 import { craftingLevelSummary } from '../lib/recipeAccess'
 import { saveProfitMovesCache } from '../lib/preferences'
-import type { ProfitMoveFilters, ProfitMoveKind } from '../types'
+import type { ProfitMoveFilters, ProfitMoveKind, ProfitMove } from '../types'
 
 export function CraftsPage() {
   const { canUse, isConnected } = useApiKey()
   const { context: craftingContext } = useCraftingContext()
   const { moves, progress, filters, setFilters, runScan, stopScan, isScanning } = useProfitMoves()
+  const [planMove, setPlanMove] = useState<ProfitMove | null>(null)
 
   useEffect(() => {
     if (progress.phase === 'done' && moves.length > 0) {
@@ -144,7 +147,11 @@ export function CraftsPage() {
         </div>
       ) : null}
 
-      <ProfitMovesTable rows={moves} kindFilter={filters.kinds} />
+      <ProfitMovesTable rows={moves} kindFilter={filters.kinds} onPlanBulk={setPlanMove} />
+
+      <ProfitChainsPanel />
+
+      <BulkCraftPlanner move={planMove} onClose={() => setPlanMove(null)} />
     </section>
   )
 }

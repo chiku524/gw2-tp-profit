@@ -11,6 +11,7 @@ type Props = {
   rows: ProfitMove[]
   kindFilter?: ProfitMoveKind[]
   compact?: boolean
+  onPlanBulk?: (move: ProfitMove) => void
 }
 
 function sortRows(rows: ProfitMove[], key: SortKey, dir: SortDir): ProfitMove[] {
@@ -32,7 +33,7 @@ function sortRows(rows: ProfitMove[], key: SortKey, dir: SortDir): ProfitMove[] 
   return dir === 'desc' ? sorted.reverse() : sorted
 }
 
-export function ProfitMovesTable({ rows, kindFilter = [], compact = false }: Props) {
+export function ProfitMovesTable({ rows, kindFilter = [], compact = false, onPlanBulk }: Props) {
   const { openItem } = useItemDetail()
   const [sortKey, setSortKey] = useState<SortKey>('profit')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -99,6 +100,7 @@ export function ProfitMovesTable({ rows, kindFilter = [], compact = false }: Pro
               {!compact ? <th>{sortLabel('roi', 'ROI')}</th> : null}
               {!compact ? <th>×25 profit</th> : null}
               {!compact ? <th>×100 profit</th> : null}
+              {!compact && onPlanBulk ? <th></th> : null}
             </tr>
           </thead>
           <tbody>
@@ -151,6 +153,13 @@ export function ProfitMovesTable({ rows, kindFilter = [], compact = false }: Pro
                 {!compact ? <td>{row.listingRoi.toFixed(1)}%</td> : null}
                 {!compact ? <td className="profit">{formatCoins(row.listingProfit * 25)}</td> : null}
                 {!compact ? <td className="profit">{formatCoins(row.listingProfit * 100)}</td> : null}
+                {!compact && onPlanBulk ? (
+                  <td>
+                    <button type="button" className="secondary compact-btn" onClick={() => onPlanBulk(row)}>
+                      Plan bulk
+                    </button>
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>

@@ -6,6 +6,7 @@ import { EXCHANGE_FEE_RATE } from '../../lib/profit'
 import { fetchHistoryOrders, fetchItems } from '../../lib/gw2Api'
 import type { CommerceTransaction, HistorySummary } from '../../types'
 import { FlipMatcherPanel } from './FlipMatcherPanel'
+import { FlipJournalPanel } from './FlipJournalPanel'
 
 type HistoryRow = CommerceTransaction & {
   side: 'buy' | 'sell'
@@ -40,7 +41,7 @@ export function HistoryPanel() {
   const [rawBuys, setRawBuys] = useState<CommerceTransaction[]>([])
   const [rawSells, setRawSells] = useState<CommerceTransaction[]>([])
   const [itemNames, setItemNames] = useState<Map<number, string>>(new Map())
-  const [view, setView] = useState<'summary' | 'matcher' | 'ledger'>('summary')
+  const [view, setView] = useState<'summary' | 'matcher' | 'ledger' | 'journal'>('summary')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -143,6 +144,9 @@ export function HistoryPanel() {
         <button type="button" className={view === 'ledger' ? 'active' : ''} onClick={() => setView('ledger')}>
           Ledger
         </button>
+        <button type="button" className={view === 'journal' ? 'active' : ''} onClick={() => setView('journal')}>
+          Journal
+        </button>
       </nav>
 
       {view === 'summary' && summary ? (
@@ -196,6 +200,8 @@ export function HistoryPanel() {
       {view === 'matcher' ? (
         <FlipMatcherPanel flips={matcher.flips} summary={matcher.summary} loading={loading} />
       ) : null}
+
+      {view === 'journal' ? <FlipJournalPanel /> : null}
 
       {view === 'ledger' ? (
         rows.length > 0 ? (

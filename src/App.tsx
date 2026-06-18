@@ -17,7 +17,7 @@ import { loadPreferredTab, savePreferredTab } from './lib/preferences'
 import type { Gw2Item } from './types'
 import './App.css'
 
-type AccountSection = 'orders' | 'delivery' | 'history' | 'crafting' | 'value'
+type AccountSection = 'orders' | 'delivery' | 'history' | 'crafting' | 'value' | 'capital' | 'sell'
 
 function App() {
   const [tab, setTab] = useState<AppTab>(() => loadPreferredTab())

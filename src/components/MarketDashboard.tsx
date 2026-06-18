@@ -1,3 +1,4 @@
+import { GemExchangePanel } from './GemExchangePanel'
 import { AccountPulse } from './AccountPulse'
 import { RecentItemsPanel } from './RecentItemsPanel'
 import { RecommendedProfitMoves } from './RecommendedProfitMoves'
@@ -79,6 +80,8 @@ export function MarketDashboard({ lastScan, onBrowseGroup, onGoAccount, onGoCraf
       </section>
 
       <AccountPulse onGoAccount={onGoAccount} />
+
+      <GemExchangePanel />
 
       <RecommendedProfitMoves onViewAll={onGoCrafts} onScanCrafts={onGoCrafts} />
 

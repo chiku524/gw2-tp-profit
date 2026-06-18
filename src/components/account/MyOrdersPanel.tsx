@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useApiKey } from '../../context/ApiKeyProvider'
 import { useItemDetail } from '../../context/ItemDetailProvider'
+import {
+  adviseOrderCancellations,
+  buildCapitalSnapshot,
+  fetchAccountRawData,
+} from '../../lib/accountSnapshot'
 import { formatCoins } from '../../lib/coins'
 import { fetchCommercePrices, fetchCurrentOrders, fetchItems } from '../../lib/gw2Api'
 import type { CommerceTransaction, OrderRow } from '../../types'
@@ -59,9 +64,14 @@ async function enrichOrders(
 }
 
 export function MyOrdersPanel() {
-  const { apiKey, canUse } = useApiKey()
+  const { apiKey, tokenInfo, canUse } = useApiKey()
   const { openItem } = useItemDetail()
   const [rows, setRows] = useState<OrderRow[]>([])
+  const [slotCount, setSlotCount] = useState(0)
+  const [slotLimit, setSlotLimit] = useState(250)
+  const [cancelAdvice, setCancelAdvice] = useState<
+    ReturnType<typeof adviseOrderCancellations>
+  >([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -71,10 +81,16 @@ export function MyOrdersPanel() {
     setError(null)
 
     try {
-      const [buys, sells] = await Promise.all([
+      const permissions = new Set(tokenInfo?.permissions ?? [])
+      const [data, buys, sells] = await Promise.all([
+        fetchAccountRawData(apiKey, permissions),
         fetchCurrentOrders(apiKey, 'buys'),
         fetchCurrentOrders(apiKey, 'sells'),
       ])
+      const capital = buildCapitalSnapshot(data)
+      setSlotCount(capital.orderSlotCount)
+      setSlotLimit(capital.orderSlotLimit)
+
       const enriched = [
         ...(await enrichOrders(buys, 'buy')),
         ...(await enrichOrders(sells, 'sell')),
@@ -84,12 +100,22 @@ export function MyOrdersPanel() {
         return rank[a.status] - rank[b.status] || b.gap - a.gap
       })
       setRows(enriched)
+
+      const itemIds = [...new Set([...buys, ...sells].map((row) => row.item_id))]
+      const prices = itemIds.length > 0 ? await fetchCommercePrices(itemIds) : []
+      const marketMap = new Map(
+        prices.map((price) => [price.id, { buy: price.buys.unit_price, sell: price.sells.unit_price }]),
+      )
+      const itemNames = new Map(
+        (await fetchItems(itemIds)).map((item) => [item.id, item.name]),
+      )
+      setCancelAdvice(adviseOrderCancellations(buys, sells, marketMap, itemNames).slice(0, 8))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load orders')
     } finally {
       setLoading(false)
     }
-  }, [apiKey, canUse])
+  }, [apiKey, canUse, tokenInfo?.permissions])
 
   useEffect(() => {
     void load()
@@ -100,6 +126,7 @@ export function MyOrdersPanel() {
   }
 
   const alerts = rows.filter((row) => row.status === 'undercut' || row.status === 'outbid')
+  const freeSlots = Math.max(0, slotLimit - slotCount)
 
   return (
     <section className="panel">
@@ -110,12 +137,39 @@ export function MyOrdersPanel() {
         </button>
       </div>
 
+      <p className="hint">
+        Order slots: <strong>{slotCount}</strong> / {slotLimit} used ({freeSlots} free)
+      </p>
+
       {error ? <p className="error">{error}</p> : null}
 
       {alerts.length > 0 ? (
         <div className="alert-banner">
           {alerts.length} order{alerts.length === 1 ? '' : 's'} need attention — undercut or outbid on the market.
         </div>
+      ) : null}
+
+      {cancelAdvice.length > 0 ? (
+        <section className="panel nested-panel order-optimizer">
+          <h3>Slot optimizer</h3>
+          <p className="hint">Orders to review first — stale prices locking capital or listing slots.</p>
+          <ul className="delivery-list">
+            {cancelAdvice.map((entry) => (
+              <li key={`${entry.order.side}-${entry.order.id}`}>
+                <button
+                  type="button"
+                  className="row-link"
+                  onClick={() =>
+                    openItem({ id: entry.order.item_id, name: entry.order.itemName })
+                  }
+                >
+                  {entry.order.itemName}
+                </button>
+                <span className="hint">{entry.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       {rows.length === 0 && !loading ? (

@@ -18,6 +18,8 @@ import {
   suggestUndercutSell,
 } from '../lib/marketMath'
 import { fetchPriceHistory, recordPriceSnapshot, type PriceSnapshot } from '../lib/priceHistory'
+import { computePriceSignals } from '../lib/priceSignals'
+import { addJournalEntry } from '../lib/flipJournal'
 import { loadProfitMovesCache } from '../lib/preferences'
 import { formatProfitMoveInputs, kindLabel } from '../lib/profitMoves'
 import {
@@ -46,6 +48,7 @@ export function ItemDetailModal({ onOpenCrafting, onGoCrafts }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const [history, setHistory] = useState<PriceSnapshot[]>([])
+  const [signals, setSignals] = useState<ReturnType<typeof computePriceSignals>>([])
 
   const loadData = useCallback(async () => {
     if (!item) return
@@ -65,6 +68,7 @@ export function ItemDetailModal({ onOpenCrafting, onGoCrafts }: Props) {
       setListings(orderBook)
       const priceHistory = await fetchPriceHistory(item.id)
       setHistory(priceHistory)
+      setSignals(computePriceSignals(priceHistory))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load item')
     } finally {
@@ -153,6 +157,21 @@ export function ItemDetailModal({ onOpenCrafting, onGoCrafts }: Props) {
                 Craft profit
               </button>
             ) : null}
+            <button
+              type="button"
+              className="secondary compact-btn"
+              onClick={() => {
+                addJournalEntry({
+                  itemId: display.id,
+                  itemName: display.name,
+                  note: `Listed flip check @ ${formatCoins(buyPrice)} buy / ${formatCoins(sellPrice)} sell`,
+                  tags: ['flip'],
+                })
+              }}
+              title="Log to flip journal"
+            >
+              Log flip
+            </button>
             <button type="button" className="icon-btn" onClick={() => void loadData()} title="Refresh prices">
               ↻
             </button>
@@ -242,6 +261,15 @@ export function ItemDetailModal({ onOpenCrafting, onGoCrafts }: Props) {
 
             <section>
               <h3>Price trend</h3>
+              {signals.length > 0 ? (
+                <ul className="signal-list">
+                  {signals.map((signal) => (
+                    <li key={signal.kind} className={`signal-${signal.strength}`}>
+                      {signal.label}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <PriceHistoryChart history={history} />
             </section>
 

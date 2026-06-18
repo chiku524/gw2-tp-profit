@@ -774,6 +774,111 @@ footer {
   background: rgba(196, 122, 44, 0.22);
 }
 
+.risk-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.badge.risk-warn {
+  color: #ffb86b;
+}
+
+.badge.risk-info {
+  color: #9fd4ff;
+}
+
+.gem-panel .gem-sparkline {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 48px;
+  margin-top: 0.5rem;
+}
+
+.gem-sparkline span {
+  flex: 1;
+  background: rgba(240, 179, 93, 0.45);
+  border-radius: 2px 2px 0 0;
+}
+
+.goal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.goal-progress-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.goal-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c47a2c, #f0b35d);
+}
+
+.goal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.journal-list,
+.chain-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.journal-list li,
+.chain-list li {
+  border: 1px solid rgba(240, 179, 93, 0.12);
+  border-radius: 0.65rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.signal-list {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.signal-list li {
+  font-size: 0.88rem;
+  color: #c9b79b;
+}
+
+.signal-up {
+  color: #9fd4ff;
+}
+
+.signal-down {
+  color: #ffb86b;
+}
+
+.hint-cell {
+  font-size: 0.82rem;
+  color: #a9957d;
+  max-width: 14rem;
+}
+
+.order-optimizer {
+  margin-bottom: 1rem;
+}
+
+.goal-form {
+  margin-bottom: 1rem;
+}
+
 .preset-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

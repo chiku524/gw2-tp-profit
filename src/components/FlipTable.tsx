@@ -4,6 +4,7 @@ import { useWatchlist } from '../context/WatchlistProvider'
 import { categoryLabel } from '../lib/itemCategories'
 import { useNamedFlips } from '../hooks/useNamedFlips'
 import { filterRowsByCategory } from './CategoryFilters'
+import { RiskFlagBadges } from './RiskFlagBadges'
 import { formatCoins } from '../lib/coins'
 import type { FlipOpportunity, FlipSortKey, ItemCategoryFilter } from '../types'
 
@@ -29,6 +30,8 @@ function sortRows(rows: FlipOpportunity[], key: FlipSortKey, dir: SortDir): Flip
         return (a.spreadPct ?? 0) - (b.spreadPct ?? 0)
       case 'volume':
         return Math.min(a.buyVolume, a.sellVolume) - Math.min(b.buyVolume, b.sellVolume)
+      case 'liquidity':
+        return (a.liquidityScore ?? 0) - (b.liquidityScore ?? 0)
       case 'profit':
       default:
         return a.listingProfit - b.listingProfit
@@ -95,6 +98,8 @@ export function FlipTable({ rows, categoryFilter = [] }: Props) {
               <th>{sortLabel('profit', 'List profit')}</th>
               <th>{sortLabel('roi', 'ROI')}</th>
               <th>{sortLabel('spread', 'Gap')}</th>
+              <th>{sortLabel('liquidity', 'Liquidity')}</th>
+              <th>Risks</th>
               <th>{sortLabel('volume', 'Volume')}</th>
             </tr>
           </thead>
@@ -133,6 +138,10 @@ export function FlipTable({ rows, categoryFilter = [] }: Props) {
                 <td className={row.listingProfit > 0 ? 'profit' : 'loss'}>{formatCoins(row.listingProfit)}</td>
                 <td>{row.listingRoi.toFixed(1)}%</td>
                 <td>{(row.spreadPct ?? 0).toFixed(1)}%</td>
+                <td>{row.liquidityScore ?? 0}</td>
+                <td>
+                  <RiskFlagBadges flags={row.riskFlags} />
+                </td>
                 <td>{row.buyVolume} / {row.sellVolume}</td>
               </tr>
             ))}

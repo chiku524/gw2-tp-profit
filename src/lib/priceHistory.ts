@@ -1,10 +1,6 @@
-import type { CommercePrice } from '../types'
+import type { CommercePrice, PriceSnapshot } from '../types'
 
-export type PriceSnapshot = {
-  t: number
-  buy: number
-  sell: number
-}
+export type { PriceSnapshot }
 
 const STORAGE_KEY = 'gw2-tp-price-history'
 const MAX_ITEMS = 200

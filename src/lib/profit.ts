@@ -1,4 +1,6 @@
 import { suggestOutbidBuy, suggestUndercutSell } from './marketMath'
+import { enrichFlipLiquidity } from './liquidity'
+import { enrichFlipRisk } from './riskFlags'
 import type { CommercePrice, FlipOpportunity } from '../types'
 
 export const LISTING_FEE_RATE = 0.05
@@ -55,19 +57,21 @@ export function opportunityFromPrice(
 
   if (listingProfit <= 0 && instantProfit <= 0) return null
 
-  return {
-    itemId: price.id,
-    itemName,
-    icon,
-    buyPrice: lowestSell,
-    sellPrice: highestBuy,
-    instantProfit,
-    instantRoi: roi(instantProfit, lowestSell),
-    buyVolume: price.sells.quantity,
-    sellVolume: price.buys.quantity,
-    listingProfit,
-    listingRoi: roi(listingProfit, flipBuyCost),
-    whitelisted: price.whitelisted,
-    spreadPct: spreadGapPercent(lowestSell, highestBuy),
-  }
+  return enrichFlipRisk(
+    enrichFlipLiquidity({
+      itemId: price.id,
+      itemName,
+      icon,
+      buyPrice: lowestSell,
+      sellPrice: highestBuy,
+      instantProfit,
+      instantRoi: roi(instantProfit, lowestSell),
+      buyVolume: price.sells.quantity,
+      sellVolume: price.buys.quantity,
+      listingProfit,
+      listingRoi: roi(listingProfit, flipBuyCost),
+      whitelisted: price.whitelisted,
+      spreadPct: spreadGapPercent(lowestSell, highestBuy),
+    }),
+  )
 }

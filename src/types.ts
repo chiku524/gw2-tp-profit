@@ -98,11 +98,15 @@ export type WatchlistSnapshot = {
   icon?: string
   buyPrice: number
   sellPrice: number
+  buyVolume?: number
+  sellVolume?: number
   instantProfit: number
   instantRoi: number
   listingProfit: number
   listingRoi: number
   spreadPct: number
+  liquidityScore?: number
+  riskFlags?: RiskFlag[]
 }
 
 export type ItemCategoryFilter =
@@ -122,7 +126,33 @@ export type ScanFilters = {
   categories: ItemCategoryFilter[]
 }
 
-export type FlipSortKey = 'profit' | 'roi' | 'spread' | 'volume' | 'name' | 'buy' | 'sell'
+export type FlipSortKey = 'profit' | 'roi' | 'spread' | 'volume' | 'name' | 'buy' | 'sell' | 'liquidity'
+
+export type RiskFlagKind =
+  | 'low_volume'
+  | 'wide_spread'
+  | 'expansion_gated'
+  | 'thin_book'
+  | 'high_fee_drag'
+  | 'stale_orders'
+
+export type RiskFlag = {
+  kind: RiskFlagKind
+  label: string
+  severity: 'warn' | 'info'
+}
+
+export type PriceSignal = {
+  kind: string
+  label: string
+  strength: 'up' | 'down' | 'neutral'
+}
+
+export type PriceSnapshot = {
+  t: number
+  buy: number
+  sell: number
+}
 
 export type FlipOpportunity = {
   itemId: number
@@ -140,6 +170,8 @@ export type FlipOpportunity = {
   spreadPct?: number
   itemType?: string
   itemCategory?: ItemCategoryFilter
+  liquidityScore?: number
+  riskFlags?: RiskFlag[]
 }
 
 export type ScanProgress = {
@@ -245,4 +277,53 @@ export type Gw2Character = {
   equipment: Gw2CharacterEquipment[]
   bags: (Gw2CharacterBag | null)[]
   last_modified?: string
+}
+
+export type StorageSellOpportunity = {
+  itemId: number
+  name: string
+  icon?: string
+  quantity: number
+  sources: string
+  highestBuy: number
+  lowestSell: number
+  listRevenue: number
+  instantRevenue: number
+  score: number
+}
+
+export type BulkCraftPlan = {
+  move: ProfitMove
+  runs: number
+  totalInputCost: number
+  totalOutputValue: number
+  totalProfit: number
+  shoppingList: { itemId: number; name: string; needed: number; have: number; buy: number }[]
+}
+
+export type WealthGoal = {
+  id: string
+  label: string
+  targetCopper: number
+  metric: 'liquid' | 'total' | 'wallet'
+}
+
+export type FlipJournalEntry = {
+  id: string
+  itemId: number
+  itemName: string
+  note: string
+  tags: string[]
+  createdAt: number
+}
+
+export type ProfitChain = {
+  outputItemId: number
+  outputName: string
+  outputIcon?: string
+  steps: { label: string; cost: number }[]
+  totalCost: number
+  listProfit: number
+  listingRoi: number
+  kind: ProfitMoveKind
 }
