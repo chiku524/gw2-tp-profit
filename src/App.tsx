@@ -9,14 +9,20 @@ import { SettingsPanel } from './components/account/SettingsPanel'
 import { ProfitCalculator } from './components/Tools'
 import { WatchlistPanel } from './components/WatchlistPanel'
 import { GlobalSearch } from './components/layout/GlobalSearch'
+import { MobileNav } from './components/layout/MobileNav'
 import { useApiKey } from './context/ApiKeyProvider'
 import { useFlipScanner } from './hooks/useFlipScanner'
 import { loadPreferredTab, savePreferredTab } from './lib/preferences'
+import type { Gw2Item } from './types'
 import './App.css'
+
+type AccountSection = 'orders' | 'delivery' | 'history' | 'crafting' | 'value'
 
 function App() {
   const [tab, setTab] = useState<AppTab>(() => loadPreferredTab())
   const [browseIds, setBrowseIds] = useState<number[] | null>(null)
+  const [accountSection, setAccountSection] = useState<AccountSection>('orders')
+  const [craftPreload, setCraftPreload] = useState<Gw2Item | null>(null)
   const { isConnected, account, loading: keyLoading } = useApiKey()
   const scanner = useFlipScanner()
   const [lastScan, setLastScan] = useState(scanner.opportunities)
@@ -51,6 +57,15 @@ function App() {
       goTab(target)
     }
   }, [goTab])
+
+  const openCraftingForItem = useCallback(
+    (item: Gw2Item) => {
+      setCraftPreload(item)
+      setAccountSection('crafting')
+      goTab('account')
+    },
+    [goTab],
+  )
 
   return (
     <div className="app">
@@ -106,7 +121,14 @@ function App() {
         ) : null}
         {tab === 'watchlist' ? <WatchlistPanel /> : null}
         {tab === 'calculator' ? <ProfitCalculator /> : null}
-        {tab === 'account' ? <AccountPage /> : null}
+        {tab === 'account' ? (
+          <AccountPage
+            section={accountSection}
+            onSectionChange={setAccountSection}
+            craftPreload={craftPreload}
+            onCraftPreloadConsumed={() => setCraftPreload(null)}
+          />
+        ) : null}
         {tab === 'settings' ? <SettingsPanel /> : null}
       </main>
 
@@ -120,8 +142,9 @@ function App() {
         </p>
       </footer>
 
-      <ItemDetailModal />
+      <ItemDetailModal onOpenCrafting={openCraftingForItem} />
       <CommandPalette onNavigate={navigate} />
+      <MobileNav active={tab} onNavigate={goTab} />
     </div>
   )
 }

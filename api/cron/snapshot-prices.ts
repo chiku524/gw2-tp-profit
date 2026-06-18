@@ -1,0 +1,57 @@
+import { kv } from '@vercel/kv'
+import { SNAPSHOT_ITEM_IDS } from '../lib/snapshotItems'
+
+type Snapshot = { t: number; buy: number; sell: number }
+
+const API_BASE = 'https://api.guildwars2.com/v2'
+const BATCH = 200
+const MAX_POINTS = 500
+
+async function fetchPrices(ids: number[]): Promise<{ id: number; buys: { unit_price: number }; sells: { unit_price: number } }[]> {
+  const url = `${API_BASE}/commerce/prices?ids=${ids.join(',')}`
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`GW2 API HTTP ${response.status}`)
+  const data = await response.json()
+  return Array.isArray(data) ? data : [data]
+}
+
+export default async function handler(request: Request): Promise<Response> {
+  const auth = request.headers.get('authorization')
+  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  let stored = 0
+  const errors: string[] = []
+
+  for (let index = 0; index < SNAPSHOT_ITEM_IDS.length; index += BATCH) {
+    const batch = SNAPSHOT_ITEM_IDS.slice(index, index + BATCH)
+    try {
+      const prices = await fetchPrices(batch)
+      for (const price of prices) {
+        const snapshot: Snapshot = {
+          t: Date.now(),
+          buy: price.sells.unit_price,
+          sell: price.buys.unit_price,
+        }
+        const key = `price:${price.id}`
+        try {
+          await kv.lpush(key, JSON.stringify(snapshot))
+          await kv.ltrim(key, 0, MAX_POINTS - 1)
+          stored += 1
+        } catch {
+          errors.push(`KV unavailable for item ${price.id}`)
+        }
+      }
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : 'batch failed')
+    }
+  }
+
+  return Response.json({
+    ok: true,
+    stored,
+    tracked: SNAPSHOT_ITEM_IDS.length,
+    errors: errors.slice(0, 5),
+  })
+}

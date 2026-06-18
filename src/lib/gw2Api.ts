@@ -1,4 +1,5 @@
 import { gw2Fetch, gw2FetchAllPages } from './gw2Fetch'
+import { recordPriceSnapshot, recordPriceSnapshots } from './priceHistory'
 import type {
   CommerceDelivery,
   CommerceListings,
@@ -20,7 +21,9 @@ export async function fetchCommercePriceIds(): Promise<number[]> {
 export async function fetchCommercePrices(ids: number[]): Promise<CommercePrice[]> {
   if (ids.length === 0) return []
   const result = await gw2Fetch<CommercePrice[]>(`/commerce/prices?ids=${ids.join(',')}`)
-  return Array.isArray(result) ? result : [result]
+  const prices = Array.isArray(result) ? result : [result]
+  recordPriceSnapshots(prices)
+  return prices
 }
 
 export async function fetchItems(ids: number[]): Promise<Gw2Item[]> {
@@ -49,7 +52,9 @@ export async function fetchItem(itemId: number): Promise<Gw2Item> {
 }
 
 export async function fetchCommercePrice(itemId: number): Promise<CommercePrice> {
-  return gw2Fetch<CommercePrice>(`/commerce/prices/${itemId}`)
+  const price = await gw2Fetch<CommercePrice>(`/commerce/prices/${itemId}`)
+  recordPriceSnapshot(price)
+  return price
 }
 
 export async function searchRecipesByOutput(itemId: number): Promise<number[]> {

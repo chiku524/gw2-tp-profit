@@ -1,11 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApiKey } from '../../context/ApiKeyProvider'
 import { formatCoins } from '../../lib/coins'
 import { calculateCraftingProfits } from '../../lib/crafting'
 import { searchItems } from '../../lib/gw2Api'
 import type { CraftingResult, Gw2Item } from '../../types'
 
-export function CraftingPanel() {
+type Props = {
+  preloadItem?: Gw2Item | null
+  onPreloadConsumed?: () => void
+}
+
+export function CraftingPanel({ preloadItem, onPreloadConsumed }: Props) {
   const { apiKey, canUse } = useApiKey()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Gw2Item[]>([])
@@ -14,6 +19,7 @@ export function CraftingPanel() {
   const [useBank, setUseBank] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const lastPreloadId = useRef<number | null>(null)
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -33,32 +39,42 @@ export function CraftingPanel() {
     return () => window.clearTimeout(timer)
   }, [query])
 
-  const analyze = async (item: Gw2Item) => {
-    setSelected(item)
-    setQuery(item.name)
-    setResults([])
-    setLoading(true)
-    setError(null)
+  const analyze = useCallback(
+    async (item: Gw2Item) => {
+      setSelected(item)
+      setQuery(item.name)
+      setResults([])
+      setLoading(true)
+      setError(null)
 
-    try {
-      const profits = await calculateCraftingProfits(
-        item.id,
-        item.name,
-        item.icon,
-        apiKey || null,
-        useBank && canUse('craftingBank'),
-      )
-      setCraftResults(profits)
-      if (profits.length === 0) {
-        setError('No craftable recipes found for this item on the trading post.')
+      try {
+        const profits = await calculateCraftingProfits(
+          item.id,
+          item.name,
+          item.icon,
+          apiKey || null,
+          useBank && canUse('craftingBank'),
+        )
+        setCraftResults(profits)
+        if (profits.length === 0) {
+          setError('No craftable recipes found for this item on the trading post.')
+        }
+      } catch (err) {
+        setCraftResults([])
+        setError(err instanceof Error ? err.message : 'Crafting analysis failed')
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      setCraftResults([])
-      setError(err instanceof Error ? err.message : 'Crafting analysis failed')
-    } finally {
-      setLoading(false)
-    }
-  }
+    },
+    [apiKey, canUse, useBank],
+  )
+
+  useEffect(() => {
+    if (!preloadItem || preloadItem.id === lastPreloadId.current) return
+    lastPreloadId.current = preloadItem.id
+    void analyze(preloadItem)
+    onPreloadConsumed?.()
+  }, [preloadItem, onPreloadConsumed, analyze])
 
   return (
     <section className="panel">

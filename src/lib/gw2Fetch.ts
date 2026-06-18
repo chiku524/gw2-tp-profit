@@ -1,3 +1,5 @@
+import { queueGw2Request } from './gw2Queue'
+
 const API_BASE = 'https://api.guildwars2.com/v2'
 
 export type Gw2FetchOptions = {
@@ -5,7 +7,7 @@ export type Gw2FetchOptions = {
   signal?: AbortSignal
 }
 
-export async function gw2Fetch<T>(
+async function gw2FetchRaw<T>(
   path: string,
   { accessToken, signal }: Gw2FetchOptions = {},
 ): Promise<T> {
@@ -22,6 +24,13 @@ export async function gw2Fetch<T>(
   return response.json() as Promise<T>
 }
 
+export async function gw2Fetch<T>(
+  path: string,
+  options: Gw2FetchOptions = {},
+): Promise<T> {
+  return queueGw2Request(() => gw2FetchRaw<T>(path, options))
+}
+
 export async function gw2FetchAllPages<T>(
   path: string,
   accessToken: string,
@@ -29,7 +38,7 @@ export async function gw2FetchAllPages<T>(
 ): Promise<T[]> {
   const results: T[] = []
   let page = 0
-  let pageSize = 200
+  const pageSize = 200
 
   while (true) {
     const separator = path.includes('?') ? '&' : '?'
@@ -37,7 +46,7 @@ export async function gw2FetchAllPages<T>(
     const url = new URL(`${API_BASE}${pagePath}`)
     url.searchParams.set('access_token', accessToken)
 
-    const response = await fetch(url, { signal })
+    const response = await queueGw2Request(() => fetch(url, { signal }))
     if (!response.ok) {
       throw new Error(`GW2 API HTTP ${response.status}`)
     }

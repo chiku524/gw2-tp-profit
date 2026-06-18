@@ -2,6 +2,7 @@ import { loadWatchlistAutoRefresh, saveWatchlistAutoRefresh } from '../lib/prefe
 import { useCallback, useEffect, useState } from 'react'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
+import { evaluatePriceAlerts } from '../lib/priceAlerts'
 import { formatCoins } from '../lib/coins'
 import { fetchCommercePrices, fetchItems } from '../lib/gw2Api'
 import { spreadPercent } from '../lib/marketMath'
@@ -50,6 +51,7 @@ export function WatchlistPanel() {
 
       snapshots.sort((a, b) => b.instantProfit - a.instantProfit)
       setRows(snapshots)
+      evaluatePriceAlerts(snapshots)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh watchlist')
     } finally {

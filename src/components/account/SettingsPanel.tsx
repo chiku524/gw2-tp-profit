@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useApiKey } from '../../context/ApiKeyProvider'
 import { FEATURE_REQUIREMENTS, PERMISSION_LABELS, type Gw2Permission } from '../../lib/permissions'
+import { PriceAlertsSettings } from '../PriceAlertsSettings'
 
 const RECOMMENDED: Gw2Permission[] = ['account', 'tradingpost', 'inventories', 'wallet']
 
@@ -102,6 +103,8 @@ export function SettingsPanel() {
           </ul>
         </div>
       ) : null}
+
+      <PriceAlertsSettings />
     </section>
   )
 }

@@ -852,9 +852,126 @@ footer {
   top: 1rem;
 }
 
+.mobile-nav {
+  display: none;
+}
+
+.price-chart svg {
+  width: 100%;
+  height: auto;
+}
+
+.chart-line.buy {
+  stroke: #7dffb2;
+  stroke-width: 2;
+}
+
+.chart-line.sell {
+  stroke: #ff8f8f;
+  stroke-width: 2;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.35rem;
+}
+
+.legend-buy {
+  color: #7dffb2;
+}
+
+.legend-sell {
+  color: #ff8f8f;
+}
+
+.nested-panel {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.alert-rules {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+}
+
+.alert-rules li {
+  display: grid;
+  grid-template-columns: 1.5fr repeat(2, minmax(5rem, auto)) auto;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.alert-rules input[type='number'] {
+  width: 5rem;
+}
+
+.compact-breakdown {
+  margin-top: 1rem;
+}
+
 @media (max-width: 720px) {
   .app {
     padding-top: 1rem;
+    padding-bottom: 5.5rem;
+  }
+
+  .tabs {
+    display: none;
+  }
+
+  .mobile-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.25rem;
+    padding: 0.45rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
+    background: rgba(18, 14, 12, 0.96);
+    border-top: 1px solid rgba(240, 179, 93, 0.15);
+    backdrop-filter: blur(8px);
+  }
+
+  .mobile-nav button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.35rem 0.2rem;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.68rem;
+  }
+
+  .mobile-nav button.active {
+    color: #f0b35d;
+  }
+
+  .mobile-nav-icon {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .modal-panel {
+    max-height: calc(100vh - 5rem);
+    overflow: auto;
+  }
+
+  .compact-btn {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.55rem;
+  }
+
+  .alert-rules li {
+    grid-template-columns: 1fr;
   }
 
   .app-header {

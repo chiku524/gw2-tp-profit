@@ -17,6 +17,7 @@ import {
   suggestOutbidBuy,
   suggestUndercutSell,
 } from '../lib/marketMath'
+import { fetchPriceHistory, type PriceSnapshot } from '../lib/priceHistory'
 import {
   instantFlipProfit,
   listingFlipProfit,
@@ -25,8 +26,13 @@ import {
 } from '../lib/profit'
 import type { CommerceListings, CommercePrice, Gw2Item } from '../types'
 import { OrderBook } from './OrderBook'
+import { PriceHistoryChart } from './PriceHistoryChart'
 
-export function ItemDetailModal() {
+type Props = {
+  onOpenCrafting?: (item: Gw2Item) => void
+}
+
+export function ItemDetailModal({ onOpenCrafting }: Props) {
   const { item, closeItem } = useItemDetail()
   const { isWatched, toggle } = useWatchlist()
   const [details, setDetails] = useState<Gw2Item | null>(null)
@@ -36,6 +42,7 @@ export function ItemDetailModal() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const [history, setHistory] = useState<PriceSnapshot[]>([])
 
   const loadData = useCallback(async () => {
     if (!item) return
@@ -52,6 +59,8 @@ export function ItemDetailModal() {
       setDetails(itemDetails)
       setPrice(commerce)
       setListings(orderBook)
+      const priceHistory = await fetchPriceHistory(item.id)
+      setHistory(priceHistory)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load item')
     } finally {
@@ -120,6 +129,18 @@ export function ItemDetailModal() {
             >
               {isWatched(display.id) ? '★' : '☆'}
             </button>
+            {onOpenCrafting ? (
+              <button
+                type="button"
+                className="secondary compact-btn"
+                onClick={() => {
+                  onOpenCrafting(display)
+                  closeItem()
+                }}
+              >
+                Craft profit
+              </button>
+            ) : null}
             <button type="button" className="icon-btn" onClick={() => void loadData()} title="Refresh prices">
               ↻
             </button>
@@ -182,6 +203,11 @@ export function ItemDetailModal() {
               {copied ? <p className="status">Copied {copied} price (copper)</p> : null}
             </section>
 
+            <section>
+              <h3>Price trend</h3>
+              <PriceHistoryChart history={history} />
+            </section>
+
             <section className="stack-calc">
               <div className="stack-header">
                 <h3>Stack profit</h3>
@@ -211,7 +237,7 @@ export function ItemDetailModal() {
               </div>
             </section>
 
-            {listings ? <OrderBook listings={listings} /> : null}
+            {listings ? <OrderBook listings={listings} compact /> : null}
           </>
         ) : null}
       </div>

@@ -3,11 +3,13 @@ import type { CommerceListings } from '../types'
 
 type Props = {
   listings: CommerceListings
+  compact?: boolean
 }
 
-export function OrderBook({ listings }: Props) {
-  const topBuys = listings.buys.slice(0, 6)
-  const topSells = listings.sells.slice(0, 6)
+export function OrderBook({ listings, compact }: Props) {
+  const depth = compact ? 4 : 6
+  const topBuys = listings.buys.slice(0, depth)
+  const topSells = listings.sells.slice(0, depth)
   const maxQty = Math.max(
     1,
     ...topBuys.map((row) => row.quantity),
