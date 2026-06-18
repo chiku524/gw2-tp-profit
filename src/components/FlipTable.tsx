@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
+import { useNamedFlips } from '../hooks/useNamedFlips'
 import { formatCoins } from '../lib/coins'
 import type { FlipOpportunity, FlipSortKey } from '../types'
 
@@ -36,16 +37,17 @@ function sortRows(rows: FlipOpportunity[], key: FlipSortKey, dir: SortDir): Flip
 export function FlipTable({ rows }: Props) {
   const { openItem } = useItemDetail()
   const { isWatched, toggle } = useWatchlist()
+  const namedRows = useNamedFlips(rows)
   const [sortKey, setSortKey] = useState<FlipSortKey>('profit')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [filter, setFilter] = useState('')
 
   const displayed = useMemo(() => {
     const filtered = filter.trim()
-      ? rows.filter((row) => row.itemName.toLowerCase().includes(filter.trim().toLowerCase()))
-      : rows
+      ? namedRows.filter((row) => row.itemName.toLowerCase().includes(filter.trim().toLowerCase()))
+      : namedRows
     return sortRows(filtered, sortKey, sortDir)
-  }, [rows, sortKey, sortDir, filter])
+  }, [namedRows, sortKey, sortDir, filter])
 
   const toggleSort = (key: FlipSortKey) => {
     if (sortKey === key) {
@@ -75,7 +77,7 @@ export function FlipTable({ rows }: Props) {
         placeholder="Filter results…"
         aria-label="Filter scan results"
       />
-      <span className="hint">{displayed.length} of {rows.length} shown</span>
+      <span className="hint">{displayed.length} of {namedRows.length} shown</span>
 
       <div className="table-wrap">
         <table>

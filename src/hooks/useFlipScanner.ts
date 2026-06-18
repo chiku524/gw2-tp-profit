@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
-import { batchCommercePrices, fetchCommercePriceIds, fetchCommercePrices, fetchItems } from '../lib/gw2Api'
+import { batchCommercePrices, fetchCommercePriceIds, fetchCommercePrices } from '../lib/gw2Api'
+import { enrichFlipOpportunities } from '../lib/itemNames'
 import { loadScanFilters, saveScanFilters } from '../lib/preferences'
 import { opportunityFromPrice } from '../lib/profit'
 import type { FlipOpportunity, ScanFilters, ScanProgress } from '../types'
@@ -17,6 +18,7 @@ export function useFlipScanner() {
   const [progress, setProgress] = useState<ScanProgress>({ phase: 'idle', totalIds: 0, loadedPrices: 0 })
   const [filters, setFiltersState] = useState<ScanFilters>(() => loadScanFilters() ?? defaultScanFilters)
   const abortRef = useRef(false)
+  const publishGeneration = useRef(0)
 
   const setFilters = useCallback((next: ScanFilters | ((prev: ScanFilters) => ScanFilters)) => {
     setFiltersState((prev) => {
@@ -24,6 +26,13 @@ export function useFlipScanner() {
       saveScanFilters(value)
       return value
     })
+  }, [])
+
+  const publishMatches = useCallback(async (rows: FlipOpportunity[]) => {
+    const generation = ++publishGeneration.current
+    const enriched = await enrichFlipOpportunities(rows)
+    if (abortRef.current || generation !== publishGeneration.current) return
+    setOpportunities(enriched)
   }, [])
 
   const stopScan = useCallback(() => {
@@ -37,6 +46,7 @@ export function useFlipScanner() {
 
   const runScan = useCallback(async () => {
     abortRef.current = false
+    publishGeneration.current += 1
     setOpportunities([])
     setProgress({ phase: 'loading-ids', totalIds: 0, loadedPrices: 0 })
 
@@ -76,7 +86,11 @@ export function useFlipScanner() {
         }
 
         if (matches.length > 0 && matches.length % 20 === 0) {
-          setOpportunities(matches.slice(0, filters.maxItems))
+          setProgress((current) => ({
+            ...current,
+            message: `Scanning… ${matches.length} matches · loading names…`,
+          }))
+          void publishMatches(matches.slice(0, filters.maxItems))
         }
       }
 
@@ -90,25 +104,13 @@ export function useFlipScanner() {
       })
 
       const top = matches.slice(0, filters.maxItems)
-      const itemIds = top.map((row) => row.itemId)
-      const items = await fetchItems(itemIds)
-      const itemMap = new Map(items.map((item) => [item.id, item]))
+      await publishMatches(top)
 
-      const enriched = top.map((row) => {
-        const item = itemMap.get(row.itemId)
-        return {
-          ...row,
-          itemName: item?.name ?? row.itemName,
-          icon: item?.icon,
-        }
-      })
-
-      setOpportunities(enriched)
       setProgress({
         phase: 'done',
         totalIds: ids.length,
         loadedPrices: ids.length,
-        message: `Found ${enriched.length} opportunities`,
+        message: `Found ${top.length} opportunities`,
       })
     } catch (error) {
       setProgress({
@@ -118,47 +120,46 @@ export function useFlipScanner() {
         message: error instanceof Error ? error.message : 'Scan failed',
       })
     }
-  }, [filters])
+  }, [filters, publishMatches])
 
-  const runQuickBrowse = useCallback(async (itemIds: number[]) => {
-    setProgress({ phase: 'loading-prices', totalIds: itemIds.length, loadedPrices: 0 })
-    setOpportunities([])
+  const runQuickBrowse = useCallback(
+    async (itemIds: number[]) => {
+      setProgress({ phase: 'loading-prices', totalIds: itemIds.length, loadedPrices: 0 })
+      setOpportunities([])
 
-    try {
-      const prices = await fetchCommercePrices(itemIds)
-      const matches = prices
-        .map((price) => opportunityFromPrice(price))
-        .filter((row): row is FlipOpportunity => row !== null)
-        .sort((a, b) => b.listingProfit - a.listingProfit)
+      try {
+        const prices = await fetchCommercePrices(itemIds)
+        const matches = prices
+          .map((price) => opportunityFromPrice(price))
+          .filter((row): row is FlipOpportunity => row !== null)
+          .sort((a, b) => b.listingProfit - a.listingProfit)
 
-      const items = await fetchItems(itemIds)
-      const itemMap = new Map(items.map((item) => [item.id, item]))
+        setProgress({
+          phase: 'loading-items',
+          totalIds: itemIds.length,
+          loadedPrices: itemIds.length,
+          message: 'Loading item names…',
+        })
 
-      setOpportunities(
-        matches.map((row) => {
-          const item = itemMap.get(row.itemId)
-          return {
-            ...row,
-            itemName: item?.name ?? row.itemName,
-            icon: item?.icon,
-          }
-        }),
-      )
-      setProgress({
-        phase: 'done',
-        totalIds: itemIds.length,
-        loadedPrices: itemIds.length,
-        message: `Loaded ${matches.length} items`,
-      })
-    } catch (error) {
-      setProgress({
-        phase: 'error',
-        totalIds: 0,
-        loadedPrices: 0,
-        message: error instanceof Error ? error.message : 'Browse failed',
-      })
-    }
-  }, [])
+        await publishMatches(matches)
+
+        setProgress({
+          phase: 'done',
+          totalIds: itemIds.length,
+          loadedPrices: itemIds.length,
+          message: `Loaded ${matches.length} items`,
+        })
+      } catch (error) {
+        setProgress({
+          phase: 'error',
+          totalIds: 0,
+          loadedPrices: 0,
+          message: error instanceof Error ? error.message : 'Browse failed',
+        })
+      }
+    },
+    [publishMatches],
+  )
 
   return {
     opportunities,

@@ -5,6 +5,7 @@ import { useWatchlist } from '../context/WatchlistProvider'
 import { evaluatePriceAlerts } from '../lib/priceAlerts'
 import { formatCoins } from '../lib/coins'
 import { fetchCommercePrices, fetchItems } from '../lib/gw2Api'
+import { enrichFlipOpportunities } from '../lib/itemNames'
 import { opportunityFromPrice } from '../lib/profit'
 import type { WatchlistSnapshot } from '../types'
 
@@ -30,27 +31,32 @@ export function WatchlistPanel() {
       const [prices, items] = await Promise.all([fetchCommercePrices(ids), fetchItems(ids)])
       const itemMap = new Map(items.map((item) => [item.id, item]))
 
-      const snapshots: WatchlistSnapshot[] = prices.map((price) => {
+      const opportunities = prices.map((price) => {
         const entry = entries.find((row) => row.itemId === price.id)
         const item = itemMap.get(price.id)
-        const opportunity = opportunityFromPrice(
+        return opportunityFromPrice(
           price,
-          item?.name ?? entry?.name ?? `Item ${price.id}`,
+          item?.name ?? entry?.name,
           item?.icon ?? entry?.icon,
         )
-        return {
-          itemId: price.id,
-          name: opportunity?.itemName ?? item?.name ?? entry?.name ?? `Item ${price.id}`,
-          icon: opportunity?.icon ?? item?.icon ?? entry?.icon,
-          buyPrice: price.sells.unit_price,
-          sellPrice: price.buys.unit_price,
-          instantProfit: opportunity?.instantProfit ?? 0,
-          instantRoi: opportunity?.instantRoi ?? 0,
-          listingProfit: opportunity?.listingProfit ?? 0,
-          listingRoi: opportunity?.listingRoi ?? 0,
-          spreadPct: opportunity?.spreadPct ?? 0,
-        }
       })
+
+      const enriched = await enrichFlipOpportunities(
+        opportunities.filter((row): row is NonNullable<typeof row> => row !== null),
+      )
+
+      const snapshots: WatchlistSnapshot[] = enriched.map((row) => ({
+        itemId: row.itemId,
+        name: row.itemName,
+        icon: row.icon,
+        buyPrice: row.buyPrice,
+        sellPrice: row.sellPrice,
+        instantProfit: row.instantProfit,
+        instantRoi: row.instantRoi,
+        listingProfit: row.listingProfit,
+        listingRoi: row.listingRoi,
+        spreadPct: row.spreadPct ?? 0,
+      }))
 
       snapshots.sort((a, b) => b.listingProfit - a.listingProfit)
       setRows(snapshots)

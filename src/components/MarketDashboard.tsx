@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
 import { formatCoins } from '../lib/coins'
-import { fetchCommercePrices, fetchGemExchange, fetchItems } from '../lib/gw2Api'
+import { fetchCommercePrices, fetchGemExchange } from '../lib/gw2Api'
+import { enrichFlipOpportunities } from '../lib/itemNames'
 import { opportunityFromPrice } from '../lib/profit'
 import { QUICK_PICKS } from '../lib/scanPresets'
 import type { FlipOpportunity, GemExchange } from '../types'
@@ -32,16 +33,11 @@ export function MarketDashboard({ lastScan, onBrowseGroup, onGoAccount }: Props)
     if (entries.length === 0) return
     const ids = entries.slice(0, 6).map((entry) => entry.itemId)
     void (async () => {
-      const [prices, items] = await Promise.all([fetchCommercePrices(ids), fetchItems(ids)])
-      const itemMap = new Map(items.map((item) => [item.id, item]))
-      setQuickPrices(
-        prices
-          .map((price) => {
-            const item = itemMap.get(price.id)
-            return opportunityFromPrice(price, item?.name ?? `Item ${price.id}`, item?.icon)
-          })
-          .filter((row): row is FlipOpportunity => row !== null),
-      )
+      const prices = await fetchCommercePrices(ids)
+      const opportunities = prices
+        .map((price) => opportunityFromPrice(price))
+        .filter((row): row is FlipOpportunity => row !== null)
+      setQuickPrices(await enrichFlipOpportunities(opportunities))
     })()
   }, [entries])
 
