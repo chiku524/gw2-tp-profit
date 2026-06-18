@@ -1,5 +1,13 @@
 import { kv } from '@vercel/kv'
-import { SNAPSHOT_ITEM_IDS } from '../lib/snapshotItems'
+
+/** Item IDs tracked by the server-side price snapshot cron. */
+const SNAPSHOT_ITEM_IDS = [
+  19759, 19700, 19722, 19748, 19701, 24277, 24282, 24288,
+  89271, 89140, 89103, 89098, 97513, 97511,
+  24615, 24633, 24609, 44950, 44956, 44957,
+  66530, 66528, 66527, 75005, 86380, 86381,
+  49432, 49434, 49428,
+]
 
 type Snapshot = { t: number; buy: number; sell: number }
 
