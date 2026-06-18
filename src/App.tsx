@@ -1,6 +1,7 @@
 import type { AppTab } from './types'
 import { useCallback, useEffect, useState } from 'react'
 import { AccountPage } from './components/AccountPage'
+import { CraftsPage } from './components/CraftsPage'
 import { CommandPalette } from './components/CommandPalette'
 import { ItemDetailModal } from './components/ItemDetailModal'
 import { MarketDashboard } from './components/MarketDashboard'
@@ -51,6 +52,7 @@ function App() {
       target === 'scanner' ||
       target === 'watchlist' ||
       target === 'calculator' ||
+      target === 'crafts' ||
       target === 'account' ||
       target === 'settings'
     ) {
@@ -100,6 +102,9 @@ function App() {
         <button type="button" className={tab === 'calculator' ? 'active' : ''} onClick={() => goTab('calculator')}>
           Calculator
         </button>
+        <button type="button" className={tab === 'crafts' ? 'active' : ''} onClick={() => goTab('crafts')}>
+          Crafts
+        </button>
         <button type="button" className={tab === 'account' ? 'active' : ''} onClick={() => goTab('account')}>
           Account
         </button>
@@ -114,6 +119,7 @@ function App() {
             lastScan={lastScan}
             onBrowseGroup={handleBrowseGroup}
             onGoAccount={() => goTab('account')}
+            onGoCrafts={() => goTab('crafts')}
           />
         ) : null}
         {tab === 'scanner' ? (
@@ -121,6 +127,7 @@ function App() {
         ) : null}
         {tab === 'watchlist' ? <WatchlistPanel /> : null}
         {tab === 'calculator' ? <ProfitCalculator /> : null}
+        {tab === 'crafts' ? <CraftsPage /> : null}
         {tab === 'account' ? (
           <AccountPage
             section={accountSection}

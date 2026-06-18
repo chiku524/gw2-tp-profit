@@ -1,4 +1,11 @@
-export type AppTab = 'market' | 'scanner' | 'watchlist' | 'calculator' | 'account' | 'settings'
+export type AppTab =
+  | 'market'
+  | 'scanner'
+  | 'watchlist'
+  | 'calculator'
+  | 'crafts'
+  | 'account'
+  | 'settings'
 
 export type CommercePrice = {
   id: number
@@ -176,6 +183,38 @@ export type CraftingResult = {
   instantProfit: number
   listingProfit: number
   disciplines: string[]
+}
+
+export type ProfitMoveKind = 'refinement' | 'craft'
+
+export type ProfitMoveInput = {
+  itemId: number
+  name: string
+  count: number
+  unitCost: number
+}
+
+export type ProfitMove = {
+  recipeId: number
+  kind: ProfitMoveKind
+  outputItemId: number
+  outputItemName: string
+  outputIcon?: string
+  outputCount: number
+  inputs: ProfitMoveInput[]
+  inputCost: number
+  outputListPrice: number
+  listingProfit: number
+  listingRoi: number
+  instantProfit: number
+  disciplines: string[]
+}
+
+export type ProfitMoveFilters = {
+  minProfit: number
+  minRoi: number
+  kinds: ProfitMoveKind[]
+  maxResults: number
 }
 
 export type Gw2CharacterBag = {

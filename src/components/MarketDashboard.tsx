@@ -1,5 +1,6 @@
 import { AccountPulse } from './AccountPulse'
 import { RecentItemsPanel } from './RecentItemsPanel'
+import { RecommendedProfitMoves } from './RecommendedProfitMoves'
 import { useEffect, useState } from 'react'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
@@ -14,9 +15,10 @@ type Props = {
   lastScan: FlipOpportunity[]
   onBrowseGroup: (itemIds: number[]) => void
   onGoAccount: () => void
+  onGoCrafts: () => void
 }
 
-export function MarketDashboard({ lastScan, onBrowseGroup, onGoAccount }: Props) {
+export function MarketDashboard({ lastScan, onBrowseGroup, onGoAccount, onGoCrafts }: Props) {
   const { entries } = useWatchlist()
   const { openItem } = useItemDetail()
   const [gems, setGems] = useState<GemExchange[]>([])
@@ -77,6 +79,8 @@ export function MarketDashboard({ lastScan, onBrowseGroup, onGoAccount }: Props)
       </section>
 
       <AccountPulse onGoAccount={onGoAccount} />
+
+      <RecommendedProfitMoves onViewAll={onGoCrafts} onScanCrafts={onGoCrafts} />
 
       <section className="panel">
         <h3>Quick browse</h3>

@@ -68,6 +68,24 @@ export async function fetchRecipes(ids: number[]): Promise<Gw2Recipe[]> {
   return Array.isArray(result) ? result : [result]
 }
 
+export async function fetchRecipeIds(): Promise<number[]> {
+  return gw2Fetch<number[]>('/recipes')
+}
+
+export async function fetchRecipesBatched(
+  ids: number[],
+  onProgress?: (loaded: number, total: number) => void,
+): Promise<Gw2Recipe[]> {
+  const results: Gw2Recipe[] = []
+  for (let index = 0; index < ids.length; index += BATCH_SIZE) {
+    const batch = ids.slice(index, index + BATCH_SIZE)
+    results.push(...(await fetchRecipes(batch)))
+    onProgress?.(Math.min(index + batch.length, ids.length), ids.length)
+    await new Promise((resolve) => window.setTimeout(resolve, 80))
+  }
+  return results
+}
+
 export async function* batchCommercePrices(
   ids: number[],
   onProgress?: (loaded: number, total: number) => void,

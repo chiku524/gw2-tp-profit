@@ -52,6 +52,7 @@ export function CommandPalette({ onNavigate }: Props) {
       { id: 'scanner', label: 'Go to Flip scanner' },
       { id: 'watchlist', label: 'Go to Watchlist' },
       { id: 'calculator', label: 'Go to Calculator' },
+      { id: 'crafts', label: 'Go to Refinements & crafts' },
       { id: 'account', label: 'Go to Account' },
       { id: 'settings', label: 'Go to Settings' },
     ],
