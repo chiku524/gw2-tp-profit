@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { readPriceHistory } from './_lib/redis'
+import { readPriceHistory } from '../server/upstash'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const itemId = typeof req.query.itemId === 'string' ? req.query.itemId : req.query.itemId?.[0]

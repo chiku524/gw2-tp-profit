@@ -69,3 +69,5 @@ export async function readPriceHistory(itemId: number, limit: number): Promise<S
     .filter((row): row is Snapshot => row !== null)
     .reverse()
 }
+
+export type { Snapshot }

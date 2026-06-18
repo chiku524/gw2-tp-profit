@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { pushPriceSnapshot } from '../_lib/redis'
+import { pushPriceSnapshot } from '../../server/upstash'
 
 /** Item IDs tracked by the server-side price snapshot cron. */
 const SNAPSHOT_ITEM_IDS = [
