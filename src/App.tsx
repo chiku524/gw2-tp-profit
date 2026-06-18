@@ -1,125 +1,110 @@
-import { useState } from 'react'
+import type { AppTab } from './types'
+import { useCallback, useEffect, useState } from 'react'
 import { AccountPage } from './components/AccountPage'
-import { FlipTable } from './components/FlipTable'
+import { CommandPalette } from './components/CommandPalette'
+import { ItemDetailModal } from './components/ItemDetailModal'
+import { MarketDashboard } from './components/MarketDashboard'
+import { ScannerPage } from './components/ScannerPage'
 import { SettingsPanel } from './components/account/SettingsPanel'
-import { ItemLookup, ProfitCalculator } from './components/Tools'
+import { ProfitCalculator } from './components/Tools'
+import { WatchlistPanel } from './components/WatchlistPanel'
+import { GlobalSearch } from './components/layout/GlobalSearch'
 import { useApiKey } from './context/ApiKeyProvider'
 import { useFlipScanner } from './hooks/useFlipScanner'
+import { loadPreferredTab, savePreferredTab } from './lib/preferences'
 import './App.css'
 
-type Tab = 'scanner' | 'lookup' | 'calculator' | 'account' | 'settings'
-
 function App() {
-  const [tab, setTab] = useState<Tab>('scanner')
+  const [tab, setTab] = useState<AppTab>(() => loadPreferredTab())
+  const [browseIds, setBrowseIds] = useState<number[] | null>(null)
   const { isConnected, account, loading: keyLoading } = useApiKey()
-  const { opportunities, progress, filters, setFilters, runScan, stopScan, isScanning } = useFlipScanner()
+  const scanner = useFlipScanner()
+  const [lastScan, setLastScan] = useState(scanner.opportunities)
 
-  const progressPercent =
-    progress.totalIds > 0 ? Math.round((progress.loadedPrices / progress.totalIds) * 100) : 0
+  useEffect(() => {
+    if (scanner.progress.phase === 'done' && scanner.opportunities.length > 0) {
+      setLastScan(scanner.opportunities)
+    }
+  }, [scanner.progress.phase, scanner.opportunities])
+
+  const goTab = useCallback((next: AppTab) => {
+    setTab(next)
+    savePreferredTab(next)
+  }, [])
+
+  const handleBrowseGroup = useCallback((itemIds: number[]) => {
+    setBrowseIds(itemIds)
+    goTab('scanner')
+  }, [goTab])
+
+  const clearBrowse = useCallback(() => setBrowseIds(null), [])
+
+  const navigate = useCallback((target: string) => {
+    if (
+      target === 'market' ||
+      target === 'scanner' ||
+      target === 'watchlist' ||
+      target === 'calculator' ||
+      target === 'account' ||
+      target === 'settings'
+    ) {
+      goTab(target)
+    }
+  }, [goTab])
 
   return (
     <div className="app">
-      <header className="hero">
-        <div>
+      <header className="app-header">
+        <div className="brand">
           <p className="eyebrow">Guild Wars 2 · Trading Post</p>
           <h1>TP Profit Helper</h1>
-          <p className="lede">
-            Find instant flip opportunities, inspect item spreads, and calculate net profit after ArenaNet fees.
-          </p>
           {isConnected ? (
             <p className="connection-badge connected">Connected · {account?.name}</p>
           ) : (
-            <p className="connection-badge">No API key · <button type="button" className="link-button" onClick={() => setTab('settings')}>Add in Settings</button></p>
+            <p className="connection-badge">
+              No API key ·{' '}
+              <button type="button" className="link-button" onClick={() => goTab('settings')}>
+                Add in Settings
+              </button>
+            </p>
           )}
         </div>
+        <GlobalSearch />
       </header>
 
       <nav className="tabs" aria-label="Sections">
-        <button type="button" className={tab === 'scanner' ? 'active' : ''} onClick={() => setTab('scanner')}>
-          Flip scanner
+        <button type="button" className={tab === 'market' ? 'active' : ''} onClick={() => goTab('market')}>
+          Market
         </button>
-        <button type="button" className={tab === 'lookup' ? 'active' : ''} onClick={() => setTab('lookup')}>
-          Item lookup
+        <button type="button" className={tab === 'scanner' ? 'active' : ''} onClick={() => goTab('scanner')}>
+          Scanner
         </button>
-        <button type="button" className={tab === 'calculator' ? 'active' : ''} onClick={() => setTab('calculator')}>
+        <button type="button" className={tab === 'watchlist' ? 'active' : ''} onClick={() => goTab('watchlist')}>
+          Watchlist
+        </button>
+        <button type="button" className={tab === 'calculator' ? 'active' : ''} onClick={() => goTab('calculator')}>
           Calculator
         </button>
-        <button type="button" className={tab === 'account' ? 'active' : ''} onClick={() => setTab('account')}>
+        <button type="button" className={tab === 'account' ? 'active' : ''} onClick={() => goTab('account')}>
           Account
         </button>
-        <button type="button" className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
+        <button type="button" className={tab === 'settings' ? 'active' : ''} onClick={() => goTab('settings')}>
           Settings
         </button>
       </nav>
 
-      <main>
-        {tab === 'scanner' ? (
-          <section className="panel">
-            <div className="filters">
-              <div className="field">
-                <label htmlFor="min-profit">Min profit (copper)</label>
-                <input
-                  id="min-profit"
-                  type="number"
-                  min={1}
-                  value={filters.minProfit}
-                  onChange={(event) => setFilters({ ...filters, minProfit: Number(event.target.value) })}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="min-roi">Min ROI %</label>
-                <input
-                  id="min-roi"
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={filters.minRoi}
-                  onChange={(event) => setFilters({ ...filters, minRoi: Number(event.target.value) })}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="min-volume">Min volume</label>
-                <input
-                  id="min-volume"
-                  type="number"
-                  min={1}
-                  value={filters.minVolume}
-                  onChange={(event) => setFilters({ ...filters, minVolume: Number(event.target.value) })}
-                />
-              </div>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={filters.f2pOnly}
-                  onChange={(event) => setFilters({ ...filters, f2pOnly: event.target.checked })}
-                />
-                Free-to-play items only
-              </label>
-            </div>
-
-            <div className="actions">
-              <button type="button" className="primary" disabled={isScanning} onClick={() => void runScan()}>
-                {isScanning ? 'Scanning…' : 'Scan trading post'}
-              </button>
-              {isScanning ? (
-                <button type="button" className="secondary" onClick={stopScan}>
-                  Stop
-                </button>
-              ) : null}
-            </div>
-
-            {progress.phase !== 'idle' ? (
-              <div className="progress">
-                <div className="progress-bar" style={{ width: `${progressPercent}%` }} />
-                <p>{progress.message ?? `${progress.loadedPrices.toLocaleString()} / ${progress.totalIds.toLocaleString()} items`}</p>
-              </div>
-            ) : null}
-
-            <FlipTable rows={opportunities} />
-          </section>
+      <main id="main-content" tabIndex={-1}>
+        {tab === 'market' ? (
+          <MarketDashboard
+            lastScan={lastScan}
+            onBrowseGroup={handleBrowseGroup}
+            onGoAccount={() => goTab('account')}
+          />
         ) : null}
-
-        {tab === 'lookup' ? <ItemLookup /> : null}
+        {tab === 'scanner' ? (
+          <ScannerPage scanner={scanner} browseIds={browseIds} onBrowseConsumed={clearBrowse} />
+        ) : null}
+        {tab === 'watchlist' ? <WatchlistPanel /> : null}
         {tab === 'calculator' ? <ProfitCalculator /> : null}
         {tab === 'account' ? <AccountPage /> : null}
         {tab === 'settings' ? <SettingsPanel /> : null}
@@ -127,11 +112,16 @@ function App() {
 
       <footer>
         <p>
-          Uses the official <a href="https://wiki.guildwars2.com/wiki/API:2" target="_blank" rel="noreferrer">Guild Wars 2 API</a>.
-          {keyLoading ? ' Validating API key…' : null}
-          {' '}Not affiliated with ArenaNet or NCSOFT.
+          Uses the official{' '}
+          <a href="https://wiki.guildwars2.com/wiki/API:2" target="_blank" rel="noreferrer">
+            Guild Wars 2 API
+          </a>
+          . {keyLoading ? 'Validating API key…' : 'Ctrl+K to search.'} Not affiliated with ArenaNet or NCSOFT.
         </p>
       </footer>
+
+      <ItemDetailModal />
+      <CommandPalette onNavigate={navigate} />
     </div>
   )
 }

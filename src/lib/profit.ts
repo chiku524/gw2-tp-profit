@@ -1,3 +1,4 @@
+import { spreadPercent } from './marketMath'
 import type { CommercePrice, FlipOpportunity } from '../types'
 
 export const LISTING_FEE_RATE = 0.05
@@ -48,5 +49,6 @@ export function opportunityFromPrice(
     listingProfit,
     listingRoi: roi(listingProfit, buyPrice),
     whitelisted: price.whitelisted,
+    spreadPct: spreadPercent(buyPrice, sellPrice),
   }
 }

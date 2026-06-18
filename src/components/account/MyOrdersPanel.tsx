@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useApiKey } from '../../context/ApiKeyProvider'
+import { useItemDetail } from '../../context/ItemDetailProvider'
 import { formatCoins } from '../../lib/coins'
 import { fetchCommercePrice, fetchCurrentOrders, fetchItems } from '../../lib/gw2Api'
 import type { CommerceTransaction, OrderRow } from '../../types'
@@ -59,6 +60,7 @@ async function enrichOrders(
 
 export function MyOrdersPanel() {
   const { apiKey, canUse } = useApiKey()
+  const { openItem } = useItemDetail()
   const [rows, setRows] = useState<OrderRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -135,8 +137,14 @@ export function MyOrdersPanel() {
               {rows.map((row) => (
                 <tr key={`${row.side}-${row.id}`} className={`status-${row.status}`}>
                   <td className="item-cell">
-                    {row.icon ? <img src={row.icon} alt="" width={28} height={28} /> : null}
-                    <span>{row.itemName}</span>
+                    <button
+                      type="button"
+                      className="row-link"
+                      onClick={() => openItem({ id: row.itemId, name: row.itemName, icon: row.icon })}
+                    >
+                      {row.icon ? <img src={row.icon} alt="" width={28} height={28} /> : null}
+                      <span>{row.itemName}</span>
+                    </button>
                   </td>
                   <td>{row.side === 'buy' ? 'Buy' : 'Sell'}</td>
                   <td>{formatCoins(row.yourPrice)}</td>

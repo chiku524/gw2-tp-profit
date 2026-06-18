@@ -1,8 +1,10 @@
 import { gw2Fetch, gw2FetchAllPages } from './gw2Fetch'
 import type {
   CommerceDelivery,
+  CommerceListings,
   CommercePrice,
   CommerceTransaction,
+  GemExchange,
   Gw2Account,
   Gw2Item,
   Gw2Recipe,
@@ -31,6 +33,19 @@ export async function searchItems(query: string): Promise<Gw2Item[]> {
   const trimmed = query.trim()
   if (trimmed.length < 2) return []
   return gw2Fetch<Gw2Item[]>(`/items/search?name=${encodeURIComponent(trimmed)}`)
+}
+
+export async function fetchCommerceListings(itemId: number): Promise<CommerceListings> {
+  return gw2Fetch<CommerceListings>(`/commerce/listings/${itemId}`)
+}
+
+export async function fetchGemExchange(): Promise<GemExchange[]> {
+  const result = await gw2Fetch<GemExchange[] | GemExchange>('/commerce/exchange')
+  return Array.isArray(result) ? result : [result]
+}
+
+export async function fetchItem(itemId: number): Promise<Gw2Item> {
+  return gw2Fetch<Gw2Item>(`/items/${itemId}`)
 }
 
 export async function fetchCommercePrice(itemId: number): Promise<CommercePrice> {

@@ -1,3 +1,5 @@
+export type AppTab = 'market' | 'scanner' | 'watchlist' | 'calculator' | 'account' | 'settings'
+
 export type CommercePrice = {
   id: number
   whitelisted: boolean
@@ -17,6 +19,7 @@ export type Gw2Item = {
   icon?: string
   rarity?: string
   type?: string
+  chat_link?: string
 }
 
 export type Gw2Recipe = {
@@ -64,6 +67,45 @@ export type CommerceDelivery = {
   items: { id: number; count: number }[]
 }
 
+export type CommerceListing = {
+  listings: number
+  unit_price: number
+  quantity: number
+}
+
+export type CommerceListings = {
+  id: number
+  buys: CommerceListing[]
+  sells: CommerceListing[]
+}
+
+export type GemExchange = {
+  coins_per_gem: number
+  quantity: number
+  gems: number
+}
+
+export type WatchlistSnapshot = {
+  itemId: number
+  name: string
+  icon?: string
+  buyPrice: number
+  sellPrice: number
+  instantProfit: number
+  instantRoi: number
+  spreadPct: number
+}
+
+export type ScanFilters = {
+  minProfit: number
+  minRoi: number
+  minVolume: number
+  f2pOnly: boolean
+  maxItems: number
+}
+
+export type FlipSortKey = 'profit' | 'roi' | 'spread' | 'volume' | 'name' | 'buy' | 'sell'
+
 export type FlipOpportunity = {
   itemId: number
   itemName: string
@@ -77,6 +119,7 @@ export type FlipOpportunity = {
   listingProfit: number
   listingRoi: number
   whitelisted: boolean
+  spreadPct?: number
 }
 
 export type ScanProgress = {
