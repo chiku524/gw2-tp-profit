@@ -20,7 +20,7 @@ const API_CAPABILITIES = [
 ]
 
 export function SettingsPanel() {
-  const { apiKey, tokenInfo, account, loading, error, setApiKey, clearKey, refresh, isConnected } =
+  const { apiKey, tokenInfo, account, loading, error, setApiKey, clearKey, refresh, isConnected, keySource } =
     useApiKey()
   const [draft, setDraft] = useState(apiKey)
   const [saving, setSaving] = useState(false)
@@ -41,7 +41,9 @@ export function SettingsPanel() {
     <section className="panel">
       <h2>API key settings</h2>
       <p className="hint">
-        Your key stays in this browser only (localStorage). Create one at{' '}
+        Your key stays in this browser only (localStorage), unless you set{' '}
+        <code>VITE_GW2_API_KEY</code> in <code>.env.local</code> (dev) or Vercel environment variables
+        (production). Create one at{' '}
         <a href="https://account.arena.net/applications" target="_blank" rel="noreferrer">
           account.arena.net/applications
         </a>
@@ -75,6 +77,10 @@ export function SettingsPanel() {
           </button>
         ) : null}
       </div>
+
+      {keySource === 'env' ? (
+        <p className="status">Using API key from environment variable (not stored in localStorage).</p>
+      ) : null}
 
       {error ? <p className="error">{error}</p> : null}
 

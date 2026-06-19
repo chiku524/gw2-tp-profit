@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { clearApiKey, loadApiKey, saveApiKey } from '../lib/apiKeyStorage'
+import { clearApiKey, isUsingEnvApiKey, loadApiKey, saveApiKey } from '../lib/apiKeyStorage'
 import { fetchAccount, fetchTokenInfo } from '../lib/gw2Api'
 import { FEATURE_REQUIREMENTS, missingPermissions } from '../lib/permissions'
 import type { Gw2Account, TokenInfo } from '../types'
@@ -24,6 +24,7 @@ type ApiKeyContextValue = {
   canUse: (feature: keyof typeof FEATURE_REQUIREMENTS) => boolean
   missingFor: (feature: keyof typeof FEATURE_REQUIREMENTS) => string[]
   isConnected: boolean
+  keySource: 'stored' | 'env' | 'none'
 }
 
 const ApiKeyContext = createContext<ApiKeyContextValue | null>(null)
@@ -102,6 +103,11 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
       canUse: (feature) => missingPermissions(permissions, FEATURE_REQUIREMENTS[feature]).length === 0,
       missingFor: (feature) => missingPermissions(permissions, FEATURE_REQUIREMENTS[feature]),
       isConnected: Boolean(tokenInfo && !error),
+      keySource: apiKey
+        ? isUsingEnvApiKey()
+          ? 'env'
+          : 'stored'
+        : 'none',
     }
   }, [apiKey, tokenInfo, account, loading, error, setApiKey, clearKey, refresh])
 
