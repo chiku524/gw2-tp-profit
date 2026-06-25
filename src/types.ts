@@ -27,6 +27,12 @@ export type Gw2Item = {
   rarity?: string
   type?: string
   chat_link?: string
+  details?: {
+    type?: string
+    weight_class?: string
+    material_type?: string
+    infusion_type?: string
+  }
 }
 
 export type Gw2Recipe = {
@@ -124,6 +130,8 @@ export type ScanFilters = {
   f2pOnly: boolean
   maxItems: number
   categories: ItemCategoryFilter[]
+  disciplines: string[]
+  subtypes: string[]
 }
 
 export type FlipSortKey = 'profit' | 'roi' | 'spread' | 'volume' | 'name' | 'buy' | 'sell' | 'liquidity'
@@ -170,6 +178,8 @@ export type FlipOpportunity = {
   spreadPct?: number
   itemType?: string
   itemCategory?: ItemCategoryFilter
+  itemDisciplines?: string[]
+  itemTags?: string[]
   liquidityScore?: number
   riskFlags?: RiskFlag[]
 }
@@ -248,6 +258,7 @@ export type ProfitMoveFilters = {
   kinds: ProfitMoveKind[]
   maxResults: number
   onlyCraftable: boolean
+  disciplines: string[]
 }
 
 export type Gw2CharacterBag = {

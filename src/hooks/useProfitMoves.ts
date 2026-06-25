@@ -24,6 +24,7 @@ function loadFilters(): ProfitMoveFilters {
     ...saved,
     kinds: saved.kinds ?? defaultProfitMoveFilters.kinds,
     onlyCraftable: saved.onlyCraftable ?? defaultProfitMoveFilters.onlyCraftable,
+    disciplines: saved.disciplines ?? defaultProfitMoveFilters.disciplines,
   }
 }
 

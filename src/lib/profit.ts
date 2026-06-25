@@ -1,10 +1,31 @@
-import { suggestOutbidBuy, suggestUndercutSell } from './marketMath'
+import { suggestInstantSell, suggestOutbidBuy, suggestUndercutSell } from './marketMath'
 import { enrichFlipLiquidity } from './liquidity'
 import { enrichFlipRisk } from './riskFlags'
 import type { CommercePrice, FlipOpportunity } from '../types'
 
 export const LISTING_FEE_RATE = 0.05
 export const EXCHANGE_FEE_RATE = 0.1
+
+/** How to estimate exit price for a listing-style flip. */
+export type FlipSellStrategy = 'undercut-listing' | 'sell-to-buy-order'
+
+const WIDE_SPREAD_SELL_TO_BUY_ORDER_PCT = 80
+
+export function flipSellStrategyForItemType(itemType?: string): FlipSellStrategy {
+  return itemType === 'Armor' ? 'sell-to-buy-order' : 'undercut-listing'
+}
+
+export function resolveFlipSellStrategy(
+  lowestSell: number,
+  highestBuy: number,
+  itemType?: string,
+): FlipSellStrategy {
+  if (itemType === 'Armor') return 'sell-to-buy-order'
+  if (spreadGapPercent(lowestSell, highestBuy) > WIDE_SPREAD_SELL_TO_BUY_ORDER_PCT) {
+    return 'sell-to-buy-order'
+  }
+  return 'undercut-listing'
+}
 
 /** Buy from listings now, sell to highest buy order now (almost always a loss on GW2). */
 export function instantFlipProfit(lowestSell: number, highestBuy: number): number {
@@ -21,12 +42,21 @@ export function listingFlipProfit(buyCost: number, listPrice: number): number {
 }
 
 /**
- * Standard TP flip: outbid highest buy (+1c), then undercut lowest sell (-1c) after fill.
- * This is what the scanner and watchlist use — not instant buy→sell-to-buy-order.
+ * Standard TP flip: outbid highest buy (+1c), then exit after fill.
+ * Most items undercut lowest sell (−1c); armor uses highest buy (sell to buy order, no fees).
  */
-export function spreadListingFlipProfit(lowestSell: number, highestBuy: number): number {
+export function spreadListingFlipProfit(
+  lowestSell: number,
+  highestBuy: number,
+  sellStrategy: FlipSellStrategy = 'undercut-listing',
+): number {
   if (lowestSell <= 0 || highestBuy <= 0) return 0
   const buyCost = suggestOutbidBuy(highestBuy)
+
+  if (sellStrategy === 'sell-to-buy-order') {
+    return suggestInstantSell(highestBuy) - buyCost
+  }
+
   const listPrice = suggestUndercutSell(lowestSell)
   return listingFlipProfit(buyCost, listPrice)
 }
@@ -45,14 +75,16 @@ export function opportunityFromPrice(
   price: CommercePrice,
   itemName = `Item ${price.id}`,
   icon?: string,
+  itemType?: string,
 ): FlipOpportunity | null {
   const lowestSell = price.sells.unit_price
   const highestBuy = price.buys.unit_price
 
   if (lowestSell <= 0 || highestBuy <= 0) return null
 
+  const sellStrategy = resolveFlipSellStrategy(lowestSell, highestBuy, itemType)
   const instantProfit = instantFlipProfit(lowestSell, highestBuy)
-  const listingProfit = spreadListingFlipProfit(lowestSell, highestBuy)
+  const listingProfit = spreadListingFlipProfit(lowestSell, highestBuy, sellStrategy)
   const flipBuyCost = suggestOutbidBuy(highestBuy)
 
   if (listingProfit <= 0 && instantProfit <= 0) return null

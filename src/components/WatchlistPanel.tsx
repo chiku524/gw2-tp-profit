@@ -43,6 +43,7 @@ export function WatchlistPanel() {
           price,
           item?.name ?? entry?.name,
           item?.icon ?? entry?.icon,
+          item?.type,
         )
       })
 

@@ -8,6 +8,7 @@ import { useApiKey } from '../context/ApiKeyProvider'
 import { useCraftingContext } from '../hooks/useCraftingContext'
 import { craftingLevelSummary } from '../lib/recipeAccess'
 import { saveProfitMovesCache } from '../lib/preferences'
+import { DISCIPLINE_OPTIONS, toggleDiscipline } from '../lib/disciplines'
 import type { ProfitMoveFilters, ProfitMoveKind, ProfitMove } from '../types'
 
 export function CraftsPage() {
@@ -31,6 +32,13 @@ export function CraftsPage() {
       const kinds = has ? current.kinds.filter((value) => value !== kind) : [...current.kinds, kind]
       return { ...current, kinds: kinds.length ? kinds : [kind] }
     })
+  }
+
+  const toggleDisciplineFilter = (discipline: string) => {
+    setFilters((current) => ({
+      ...current,
+      disciplines: toggleDiscipline(current.disciplines, discipline),
+    }))
   }
 
   return (
@@ -64,6 +72,38 @@ export function CraftsPage() {
         >
           Crafts
         </button>
+      </div>
+
+      <div className="filter-section-static">
+        <div className="filter-section-summary">
+          <span className="field-label">Crafting disciplines</span>
+          <span className="hint">
+            {filters.disciplines.length === 0
+              ? 'Any discipline'
+              : `${filters.disciplines.length} selected`}
+          </span>
+          {filters.disciplines.length > 0 ? (
+            <button
+              type="button"
+              className="filter-section-clear"
+              onClick={() => setFilters({ ...filters, disciplines: [] })}
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
+        <div className="category-chips">
+          {DISCIPLINE_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={filters.disciplines.includes(option.id) ? 'category-chip active' : 'category-chip'}
+              onClick={() => toggleDisciplineFilter(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="filters">

@@ -1,4 +1,4 @@
-import { spreadListingFlipProfit } from './profit'
+import { spreadListingFlipProfit, type FlipSellStrategy } from './profit'
 
 /** Suggest a sell list price one copper below lowest competitor. */
 export function suggestUndercutSell(lowestSell: number): number {
@@ -25,8 +25,13 @@ export function stackInstantProfit(unitProfit: number, quantity: number): number
   return unitProfit * quantity
 }
 
-export function stackListingProfit(lowestSell: number, highestBuy: number, quantity: number): number {
-  return spreadListingFlipProfit(lowestSell, highestBuy) * quantity
+export function stackListingProfit(
+  lowestSell: number,
+  highestBuy: number,
+  quantity: number,
+  sellStrategy?: FlipSellStrategy,
+): number {
+  return spreadListingFlipProfit(lowestSell, highestBuy, sellStrategy) * quantity
 }
 
 export function maxFlipQuantity(buyVolume: number, sellVolume: number): number {

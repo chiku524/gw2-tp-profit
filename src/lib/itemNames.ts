@@ -1,5 +1,9 @@
 import { categoryForItemType } from './itemCategories'
+import { getDisciplineIndex, disciplinesForItem } from './disciplineIndex'
+import { itemFilterTags } from './itemSubtypes'
 import { fetchItems } from './gw2Api'
+import { resolveFlipSellStrategy, roi, spreadListingFlipProfit } from './profit'
+import { suggestOutbidBuy } from './marketMath'
 import type { FlipOpportunity, Gw2Item } from '../types'
 
 const BATCH = 200
@@ -41,17 +45,29 @@ export async function enrichFlipOpportunities(rows: FlipOpportunity[]): Promise<
   if (rows.length === 0) return rows
 
   const ids = rows.map((row) => row.itemId)
+  const disciplineIndex = await getDisciplineIndex()
   await fetchItemsBatched(ids)
 
   return rows.map((row) => {
     const item = itemCache.get(row.itemId)
     if (!item) return row
+
+    const itemType = item.type ?? row.itemType
+    const itemDisciplines = disciplinesForItem(row.itemId, disciplineIndex)
+    const sellStrategy = resolveFlipSellStrategy(row.buyPrice, row.sellPrice, itemType)
+    const listingProfit = spreadListingFlipProfit(row.buyPrice, row.sellPrice, sellStrategy)
+    const flipBuyCost = suggestOutbidBuy(row.sellPrice)
+
     return {
       ...row,
       itemName: item.name,
       icon: item.icon ?? row.icon,
-      itemType: item.type ?? row.itemType,
-      itemCategory: categoryForItemType(item.type ?? row.itemType),
+      itemType,
+      itemCategory: categoryForItemType(itemType),
+      itemDisciplines,
+      itemTags: itemFilterTags(item, itemDisciplines),
+      listingProfit,
+      listingRoi: roi(listingProfit, flipBuyCost),
     }
   })
 }

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { formatCoins } from '../lib/coins'
 import { formatProfitMoveInputs, kindLabel } from '../lib/profitMoves'
+import { disciplineLabel } from '../lib/disciplines'
 import type { ProfitMove, ProfitMoveKind } from '../types'
 
 type SortKey = 'profit' | 'roi' | 'cost' | 'name' | 'kind'
@@ -95,6 +96,7 @@ export function ProfitMovesTable({ rows, kindFilter = [], compact = false, onPla
               <th>{sortLabel('kind', 'Type')}</th>
               <th>Combine</th>
               <th>{sortLabel('name', 'Output')}</th>
+              {!compact ? <th>Disciplines</th> : null}
               {!compact ? <th>{sortLabel('cost', 'Input cost')}</th> : null}
               <th>{sortLabel('profit', 'Profit / craft')}</th>
               {!compact ? <th>{sortLabel('roi', 'ROI')}</th> : null}
@@ -148,6 +150,21 @@ export function ProfitMovesTable({ rows, kindFilter = [], compact = false, onPla
                     <span>{row.outputItemName}</span>
                   </button>
                 </td>
+                {!compact ? (
+                  <td>
+                    {row.disciplines.length ? (
+                      <span className="tag-list">
+                        {row.disciplines.map((discipline) => (
+                          <span key={discipline} className="badge subtle">
+                            {disciplineLabel(discipline)}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                ) : null}
                 {!compact ? <td>{formatCoins(row.inputCost)}</td> : null}
                 <td className={row.listingProfit > 0 ? 'profit' : 'loss'}>{formatCoins(row.listingProfit)}</td>
                 {!compact ? <td>{row.listingRoi.toFixed(1)}%</td> : null}

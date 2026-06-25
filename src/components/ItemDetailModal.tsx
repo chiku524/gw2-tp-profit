@@ -25,6 +25,7 @@ import { formatProfitMoveInputs, kindLabel } from '../lib/profitMoves'
 import {
   instantFlipProfit,
   spreadListingFlipProfit,
+  resolveFlipSellStrategy,
   LISTING_FEE_RATE,
   EXCHANGE_FEE_RATE,
 } from '../lib/profit'
@@ -106,13 +107,14 @@ export function ItemDetailModal({ onOpenCrafting, onGoCrafts }: Props) {
 
   if (!item) return null
 
+  const display = details ?? item
   const buyPrice = price?.sells.unit_price ?? 0
   const sellPrice = price?.buys.unit_price ?? 0
+  const sellStrategy = resolveFlipSellStrategy(buyPrice, sellPrice, display.type)
   const instantProfit = instantFlipProfit(buyPrice, sellPrice)
-  const listingProfit = spreadListingFlipProfit(buyPrice, sellPrice)
+  const listingProfit = spreadListingFlipProfit(buyPrice, sellPrice, sellStrategy)
   const spread = spreadPercent(buyPrice, sellPrice)
   const maxQty = price ? maxFlipQuantity(price.sells.quantity, price.buys.quantity) : 0
-  const display = details ?? item
 
   return (
     <div className="modal-backdrop" onClick={closeItem} role="presentation">
@@ -208,7 +210,9 @@ export function ItemDetailModal({ onOpenCrafting, onGoCrafts }: Props) {
                   {formatCoins(listingProfit)}
                 </strong>
                 <small>
-                  {Math.round(LISTING_FEE_RATE * 100)}% + {Math.round(EXCHANGE_FEE_RATE * 100)}% fees
+                  {sellStrategy === 'sell-to-buy-order'
+                    ? 'Outbid top buy (+1c), then sell to highest buy order (no listing fees)'
+                    : `${Math.round(LISTING_FEE_RATE * 100)}% + ${Math.round(EXCHANGE_FEE_RATE * 100)}% fees`}
                 </small>
               </div>
             </div>
@@ -296,7 +300,7 @@ export function ItemDetailModal({ onOpenCrafting, onGoCrafts }: Props) {
                 <span>
                   Listing:{' '}
                   <strong className={listingProfit >= 0 ? 'profit' : 'loss'}>
-                    {formatCoins(stackListingProfit(buyPrice, sellPrice, quantity))}
+                    {formatCoins(stackListingProfit(buyPrice, sellPrice, quantity, sellStrategy))}
                   </strong>
                 </span>
               </div>

@@ -12,12 +12,20 @@ export const defaultScanFilters: ScanFilters = {
   f2pOnly: false,
   maxItems: 100,
   categories: [],
+  disciplines: [],
+  subtypes: [],
 }
 
 function loadFilters(): ScanFilters {
   const saved = loadScanFilters()
   if (!saved) return defaultScanFilters
-  return { ...defaultScanFilters, ...saved, categories: saved.categories ?? [] }
+  return {
+    ...defaultScanFilters,
+    ...saved,
+    categories: saved.categories ?? [],
+    disciplines: saved.disciplines ?? [],
+    subtypes: saved.subtypes ?? [],
+  }
 }
 
 export function useFlipScanner() {
@@ -65,7 +73,17 @@ export function useFlipScanner() {
 
       const matches: FlipOpportunity[] = []
       const categoryNote =
-        filters.categories.length > 0 ? ` · ${filters.categories.length} categor${filters.categories.length === 1 ? 'y' : 'ies'}` : ''
+        filters.categories.length > 0 ||
+        filters.disciplines.length > 0 ||
+        filters.subtypes.length > 0
+          ? ` · ${[
+              filters.categories.length > 0 ? `${filters.categories.length} categor${filters.categories.length === 1 ? 'y' : 'ies'}` : '',
+              filters.disciplines.length > 0 ? `${filters.disciplines.length} discipline${filters.disciplines.length === 1 ? '' : 's'}` : '',
+              filters.subtypes.length > 0 ? `${filters.subtypes.length} subtype${filters.subtypes.length === 1 ? '' : 's'}` : '',
+            ]
+              .filter(Boolean)
+              .join(', ')}`
+          : ''
 
       for await (const batch of batchCommercePrices(ids, (loaded, total) => {
         if (!abortRef.current) {
@@ -79,7 +97,19 @@ export function useFlipScanner() {
       })) {
         if (abortRef.current) break
 
-        const batchMatches = await matchesFromPrices(batch, filters)
+        const batchMatches = await matchesFromPrices(batch, filters, {
+          onProgress: (message, loaded, total) => {
+            if (!abortRef.current) {
+              setProgress({
+                phase: 'loading-prices',
+                totalIds: total,
+                loadedPrices: loaded,
+                message: `${message} · ${matches.length} matches${categoryNote}`,
+              })
+            }
+          },
+          signal: { get aborted() { return abortRef.current } },
+        })
         matches.push(...batchMatches)
 
         matches.sort((a, b) => b.listingProfit - a.listingProfit)

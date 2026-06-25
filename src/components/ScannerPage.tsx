@@ -1,4 +1,4 @@
-import { CategoryFilters } from './CategoryFilters'
+import { ScanFilterPanel } from './ScanFilterPanel'
 import { exportFlipsToCsv } from '../lib/exportCsv'
 import { useEffect } from 'react'
 import { FlipTable } from './FlipTable'
@@ -42,14 +42,15 @@ export function ScannerPage({ scanner, browseIds, onBrowseConsumed }: Props) {
           <p className="hint">
             Scans ~28k items using live GW2 prices (each scan takes 2–3 min). Profit is estimated for a
             listing flip: outbid highest buy (+1c), then undercut lowest sell (−1c) after your buy order fills.
-            Instant buy→sell-to-buy-order is almost never profitable on GW2.
+            Armor uses highest buy as the exit price (sell to buy order) because wide spreads make undercutting
+            listings unrealistic.
           </p>
         </div>
       </div>
 
       <ScanPresets filters={filters} onApply={setFilters} />
 
-      <CategoryFilters filters={filters} onChange={setFilters} />
+      <ScanFilterPanel filters={filters} onChange={setFilters} />
 
       <div className="filters">
         <div className="field">
@@ -129,7 +130,7 @@ export function ScannerPage({ scanner, browseIds, onBrowseConsumed }: Props) {
         </div>
       ) : null}
 
-      <FlipTable rows={opportunities} categoryFilter={filters.categories} />
+      <FlipTable rows={opportunities} scanFilters={filters} />
     </section>
   )
 }

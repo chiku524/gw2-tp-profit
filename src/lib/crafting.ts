@@ -1,12 +1,7 @@
 import { nestRecipes } from '@gw2efficiency/recipe-nesting'
 import { cheapestTree, useVendorPrices } from '@gw2efficiency/recipe-calculation'
-import {
-  fetchBankItemCounts,
-  fetchCommercePrices,
-  fetchRecipes,
-  searchRecipesByOutput,
-} from './gw2Api'
-import { listingFlipProfit } from './profit'
+import { fetchBankItemCounts, fetchCommercePrices, fetchItems, fetchRecipes, searchRecipesByOutput } from './gw2Api'
+import { listingFlipProfit, flipSellStrategyForItemType } from './profit'
 import { suggestUndercutSell } from './marketMath'
 import { isRecipeCraftable, type CraftingContext } from './recipeAccess'
 import type { CraftingResult, Gw2Recipe } from '../types'
@@ -97,6 +92,8 @@ export async function calculateCraftingProfits(
   }
 
   const prices = await fetchCommercePrices([...itemIds])
+  const outputItems = await fetchItems([outputItemId])
+  const outputSellStrategy = flipSellStrategyForItemType(outputItems[0]?.type)
   const buyPrices: Record<number, number> = {}
   const sellPrices: Record<number, number> = {}
 
@@ -125,11 +122,18 @@ export async function calculateCraftingProfits(
 
     const calculated = cheapestTree(1, tree, itemPrices, availableItems) as RecipeTreeNode
     const craftCost = treeCraftCost(calculated)
-    const listPrice = suggestUndercutSell(outputLowestSell)
+    const listPrice =
+      outputSellStrategy === 'sell-to-buy-order'
+        ? outputHighestBuy
+        : suggestUndercutSell(outputLowestSell)
     const listingProfit =
-      craftCost > 0 && listPrice > 0 ? listingFlipProfit(craftCost, listPrice) : 0
+      craftCost > 0 && listPrice > 0
+        ? outputSellStrategy === 'sell-to-buy-order'
+          ? outputHighestBuy - craftCost
+          : listingFlipProfit(craftCost, listPrice)
+        : 0
     const instantProfit =
-      craftCost > 0 && outputLowestSell > 0 ? outputLowestSell - craftCost : 0
+      craftCost > 0 && outputHighestBuy > 0 ? outputHighestBuy - craftCost : 0
 
     results.push({
       outputItemId,
@@ -138,7 +142,12 @@ export async function calculateCraftingProfits(
       recipeId: recipe.id,
       craftCost,
       sellRevenue: outputHighestBuy,
-      listingRevenue: listPrice > 0 ? Math.round(listPrice * 0.85) : 0,
+      listingRevenue:
+        listPrice > 0
+          ? outputSellStrategy === 'sell-to-buy-order'
+            ? outputHighestBuy
+            : Math.round(listPrice * 0.85)
+          : 0,
       instantProfit,
       listingProfit,
       disciplines: recipe.disciplines ?? [],

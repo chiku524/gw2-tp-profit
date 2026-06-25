@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
+import { filterRowsByScanFilters } from '../lib/scanFilters'
+import { disciplineLabel } from '../lib/disciplines'
 import { categoryLabel } from '../lib/itemCategories'
 import { useNamedFlips } from '../hooks/useNamedFlips'
-import { filterRowsByCategory } from './CategoryFilters'
 import { RiskFlagBadges } from './RiskFlagBadges'
 import { formatCoins } from '../lib/coins'
-import type { FlipOpportunity, FlipSortKey, ItemCategoryFilter } from '../types'
+import type { FlipOpportunity, FlipSortKey, ScanFilters } from '../types'
 
 type Props = {
   rows: FlipOpportunity[]
-  categoryFilter?: ItemCategoryFilter[]
+  scanFilters?: ScanFilters
 }
 
 type SortDir = 'asc' | 'desc'
@@ -40,21 +41,21 @@ function sortRows(rows: FlipOpportunity[], key: FlipSortKey, dir: SortDir): Flip
   return dir === 'desc' ? sorted.reverse() : sorted
 }
 
-export function FlipTable({ rows, categoryFilter = [] }: Props) {
+export function FlipTable({ rows, scanFilters }: Props) {
   const { openItem } = useItemDetail()
   const { isWatched, toggle } = useWatchlist()
   const namedRows = useNamedFlips(rows)
-  const categoryRows = filterRowsByCategory(namedRows, categoryFilter)
+  const filteredRows = scanFilters ? filterRowsByScanFilters(namedRows, scanFilters) : namedRows
   const [sortKey, setSortKey] = useState<FlipSortKey>('profit')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [filter, setFilter] = useState('')
 
   const displayed = useMemo(() => {
     const filtered = filter.trim()
-      ? categoryRows.filter((row) => row.itemName.toLowerCase().includes(filter.trim().toLowerCase()))
-      : categoryRows
+      ? filteredRows.filter((row) => row.itemName.toLowerCase().includes(filter.trim().toLowerCase()))
+      : filteredRows
     return sortRows(filtered, sortKey, sortDir)
-  }, [categoryRows, sortKey, sortDir, filter])
+  }, [filteredRows, sortKey, sortDir, filter])
 
   const toggleSort = (key: FlipSortKey) => {
     if (sortKey === key) {
@@ -84,7 +85,7 @@ export function FlipTable({ rows, categoryFilter = [] }: Props) {
         placeholder="Filter results…"
         aria-label="Filter scan results"
       />
-      <span className="hint">{displayed.length} of {categoryRows.length} shown</span>
+      <span className="hint">{displayed.length} of {filteredRows.length} shown</span>
 
       <div className="table-wrap">
         <table>
@@ -93,6 +94,7 @@ export function FlipTable({ rows, categoryFilter = [] }: Props) {
               <th></th>
               <th>{sortLabel('name', 'Item')}</th>
               <th>Category</th>
+              <th>Disciplines</th>
               <th>{sortLabel('buy', 'Lowest sell')}</th>
               <th>{sortLabel('sell', 'Highest buy')}</th>
               <th>{sortLabel('profit', 'List profit')}</th>
@@ -132,6 +134,19 @@ export function FlipTable({ rows, categoryFilter = [] }: Props) {
                   <span className="badge subtle">
                     {row.itemCategory ? categoryLabel(row.itemCategory) : '—'}
                   </span>
+                </td>
+                <td>
+                  {row.itemDisciplines?.length ? (
+                    <span className="tag-list">
+                      {row.itemDisciplines.map((discipline) => (
+                        <span key={discipline} className="badge subtle">
+                          {disciplineLabel(discipline)}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
                 </td>
                 <td>{formatCoins(row.buyPrice)}</td>
                 <td>{formatCoins(row.sellPrice)}</td>

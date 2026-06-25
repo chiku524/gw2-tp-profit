@@ -4,6 +4,7 @@ import {
   fetchRecipesBatched,
 } from './gw2Api'
 import { fetchItemsBatched } from './itemNames'
+import { matchesRecipeDisciplines } from './disciplines'
 import { suggestUndercutSell } from './marketMath'
 import { listingFlipProfit, roi } from './profit'
 import { isRecipeCraftable, type CraftingContext } from './recipeAccess'
@@ -29,6 +30,7 @@ export const defaultProfitMoveFilters: ProfitMoveFilters = {
   kinds: ['refinement', 'craft'],
   maxResults: 80,
   onlyCraftable: false,
+  disciplines: [],
 }
 
 function profitMoveFromRecipe(
@@ -143,6 +145,7 @@ export async function scanProfitMoves(
     const move = profitMoveFromRecipe(recipe, priceMap, itemMap)
     if (!move) continue
     if (!filters.kinds.includes(move.kind)) continue
+    if (!matchesRecipeDisciplines(recipe.disciplines, filters.disciplines)) continue
     if (move.listingProfit < filters.minProfit) continue
     if (move.listingRoi < filters.minRoi) continue
     moves.push(move)

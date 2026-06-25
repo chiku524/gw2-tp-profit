@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { recordPriceSnapshot } from '../lib/priceHistory'
 import { fetchCommercePrice, searchItems } from '../lib/gw2Api'
 import { formatCoins, parseCoinsInput } from '../lib/coins'
-import { instantFlipProfit, spreadListingFlipProfit, listingFlipProfit } from '../lib/profit'
+import { instantFlipProfit, spreadListingFlipProfit, resolveFlipSellStrategy, listingFlipProfit } from '../lib/profit'
 import type { CommercePrice, Gw2Item } from '../types'
 
 export function ItemLookup() {
@@ -52,8 +52,9 @@ export function ItemLookup() {
 
   const buyPrice = price?.sells.unit_price ?? 0
   const sellPrice = price?.buys.unit_price ?? 0
+  const sellStrategy = resolveFlipSellStrategy(buyPrice, sellPrice, selected?.type)
   const instantProfit = instantFlipProfit(buyPrice, sellPrice)
-  const listingProfit = spreadListingFlipProfit(buyPrice, sellPrice)
+  const listingProfit = spreadListingFlipProfit(buyPrice, sellPrice, sellStrategy)
 
   return (
     <section className="panel">
@@ -111,7 +112,11 @@ export function ItemLookup() {
             <div>
               <span>Listing flip (est.)</span>
               <strong className={listingProfit > 0 ? 'profit' : 'loss'}>{formatCoins(listingProfit)}</strong>
-              <small>Outbid top buy, undercut lowest sell (after fees)</small>
+              <small>
+                {sellStrategy === 'sell-to-buy-order'
+                  ? 'Outbid top buy, sell to highest buy order (armor)'
+                  : 'Outbid top buy, undercut lowest sell (after fees)'}
+              </small>
             </div>
           </div>
         </div>
