@@ -1,6 +1,5 @@
 import {
-  fetchCharacterNames,
-  fetchCharacters,
+  fetchAllAccountCharacters,
   fetchCommercePrices,
   fetchCurrentOrders,
 } from './gw2Api'
@@ -48,7 +47,7 @@ export async function fetchAccountRawData(
   const hasInventories = permissions.has('inventories')
   const hasCharacters = permissions.has('characters')
 
-  const [wallet, delivery, buys, sells, bank, materials, characterNames] = await Promise.all([
+  const [wallet, delivery, buys, sells, bank, materials, characters] = await Promise.all([
     hasWallet ? gw2Fetch<WalletCurrency[]>('/account/wallet', { accessToken }) : Promise.resolve([]),
     hasTp
       ? gw2Fetch<{ coins: number; items: InventorySlot[] }>('/commerce/delivery', { accessToken })
@@ -60,14 +59,9 @@ export async function fetchAccountRawData(
       ? gw2Fetch<InventorySlot[]>('/account/materials', { accessToken })
       : Promise.resolve([]),
     hasCharacters && hasInventories
-      ? fetchCharacterNames(accessToken).catch(() => [] as string[])
-      : Promise.resolve([] as string[]),
+      ? fetchAllAccountCharacters(accessToken).catch(() => [] as Gw2Character[])
+      : Promise.resolve([] as Gw2Character[]),
   ])
-
-  const characters =
-    characterNames.length > 0
-      ? await fetchCharacters(accessToken, characterNames).catch(() => [] as Gw2Character[])
-      : []
 
   return { wallet, delivery, buys, sells, bank, materials, characters }
 }

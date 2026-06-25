@@ -1,8 +1,7 @@
 import accountValue, { allItemIds } from 'gw2e-account-value'
 import {
   fetchAccountRecipes,
-  fetchCharacterNames,
-  fetchCharacters,
+  fetchAllAccountCharacters,
   fetchCommercePrices,
   fetchCurrentOrders,
   fetchDelivery,
@@ -72,11 +71,7 @@ async function loadCharacters(
   hasInventories: boolean,
 ): Promise<Gw2Character[]> {
   if (!hasCharacters || !hasInventories) return []
-
-  const names = await fetchCharacterNames(accessToken)
-  if (names.length === 0) return []
-
-  return fetchCharacters(accessToken, names)
+  return fetchAllAccountCharacters(accessToken).catch(() => [] as Gw2Character[])
 }
 
 export async function calculateAccountValue(

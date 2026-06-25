@@ -26,8 +26,23 @@ export async function fetchCommercePrices(ids: number[]): Promise<CommercePrice[
 
 export async function fetchItems(ids: number[]): Promise<Gw2Item[]> {
   if (ids.length === 0) return []
-  const result = await gw2Fetch<Gw2Item[]>(`/items?ids=${ids.join(',')}`)
-  return Array.isArray(result) ? result : [result]
+  try {
+    const result = await gw2Fetch<Gw2Item[]>(`/items?ids=${ids.join(',')}`)
+    return Array.isArray(result) ? result : [result]
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes('404') || ids.length === 1) {
+      throw error
+    }
+    const results: Gw2Item[] = []
+    for (const id of ids) {
+      try {
+        results.push(...(await fetchItems([id])))
+      } catch {
+        /* skip removed or invalid item ids */
+      }
+    }
+    return results
+  }
 }
 
 export async function searchItems(query: string): Promise<Gw2Item[]> {
@@ -145,7 +160,16 @@ export async function fetchBankItemCounts(accessToken: string): Promise<Record<n
 }
 
 export async function fetchCharacterNames(accessToken: string): Promise<string[]> {
-  return gw2FetchAllPages<string>('/characters', accessToken)
+  // Do not paginate here — GW2 expands paged /characters responses into objects, not names.
+  const result = await gw2Fetch<string[]>('/characters', { accessToken })
+  if (!Array.isArray(result)) return []
+  return result.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
+}
+
+/** Full character payloads (crafting levels, bags, etc.) in one authenticated request. */
+export async function fetchAllAccountCharacters(accessToken: string): Promise<Gw2Character[]> {
+  const result = await gw2Fetch<Gw2Character[]>('/characters?ids=all', { accessToken })
+  return Array.isArray(result) ? result : [result]
 }
 
 export async function fetchAccountRecipes(accessToken: string): Promise<number[]> {
@@ -155,11 +179,23 @@ export async function fetchAccountRecipes(accessToken: string): Promise<number[]
 export async function fetchCharacters(accessToken: string, names: string[]): Promise<Gw2Character[]> {
   if (names.length === 0) return []
 
+  const validNames = names
+    .map((name) => {
+      if (typeof name === 'string') return name
+      if (name && typeof name === 'object' && 'name' in name) {
+        return String((name as Gw2Character).name)
+      }
+      return ''
+    })
+    .filter((name) => name.length > 0)
+
+  if (validNames.length === 0) return []
+
   const results: Gw2Character[] = []
   const batchSize = 8
 
-  for (let index = 0; index < names.length; index += batchSize) {
-    const batch = names.slice(index, index + batchSize)
+  for (let index = 0; index < validNames.length; index += batchSize) {
+    const batch = validNames.slice(index, index + batchSize)
     const ids = batch.map((name) => encodeURIComponent(name)).join(',')
     const response = await gw2Fetch<Gw2Character[] | Gw2Character>(`/characters?ids=${ids}`, {
       accessToken,

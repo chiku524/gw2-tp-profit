@@ -1,4 +1,4 @@
-import { fetchAccountRecipes, fetchCharacterNames, fetchCharacters } from './gw2Api'
+import { fetchAccountRecipes, fetchAllAccountCharacters } from './gw2Api'
 import type { Gw2Character, Gw2Recipe } from '../types'
 
 export type CraftingContext = {
@@ -53,15 +53,10 @@ function maxRatingsFromCharacters(characters: Gw2Character[]): Map<string, numbe
 }
 
 export async function loadCraftingContext(accessToken: string): Promise<CraftingContext> {
-  const [unlockedRecipeIds, characterNames] = await Promise.all([
+  const [unlockedRecipeIds, characters] = await Promise.all([
     fetchAccountRecipes(accessToken).catch(() => [] as number[]),
-    fetchCharacterNames(accessToken).catch(() => [] as string[]),
+    fetchAllAccountCharacters(accessToken).catch(() => [] as Gw2Character[]),
   ])
-
-  const characters =
-    characterNames.length > 0
-      ? await fetchCharacters(accessToken, characterNames).catch(() => [] as Gw2Character[])
-      : []
 
   return {
     unlockedRecipeIds: new Set(unlockedRecipeIds),
