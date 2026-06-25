@@ -236,6 +236,8 @@ export type ProfitMoveInput = {
   unitCost: number
 }
 
+export type ProfitMoveSortMode = 'profit' | 'roi' | 'volume_weighted'
+
 export type ProfitMove = {
   recipeId: number
   kind: ProfitMoveKind
@@ -250,6 +252,11 @@ export type ProfitMove = {
   listingRoi: number
   instantProfit: number
   disciplines: string[]
+  maxCraftVolume: number
+  outputVolume: number
+  bottleneckVolume: number
+  volumeWeightedProfit: number
+  stackProfit: number
 }
 
 export type ProfitMoveFilters = {
@@ -258,7 +265,10 @@ export type ProfitMoveFilters = {
   kinds: ProfitMoveKind[]
   maxResults: number
   onlyCraftable: boolean
+  onlyWithinMyLevels: boolean
   disciplines: string[]
+  sortMode: ProfitMoveSortMode
+  minVolume: number
 }
 
 export type Gw2CharacterBag = {

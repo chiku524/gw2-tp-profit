@@ -5,9 +5,14 @@ import {
 } from './gw2Api'
 import { fetchItemsBatched } from './itemNames'
 import { matchesRecipeDisciplines } from './disciplines'
+import {
+  craftVolumeBreakdown,
+  stackCraftProfit,
+  volumeWeightedProfit,
+} from './profitMoveVolume'
 import { suggestUndercutSell } from './marketMath'
 import { listingFlipProfit, roi } from './profit'
-import { isRecipeCraftable, type CraftingContext } from './recipeAccess'
+import { isRecipeCraftable, meetsCraftingLevel, type CraftingContext } from './recipeAccess'
 import type {
   CommercePrice,
   Gw2Item,
@@ -15,6 +20,7 @@ import type {
   ProfitMove,
   ProfitMoveFilters,
   ProfitMoveKind,
+  ProfitMoveSortMode,
 } from '../types'
 
 const COMBINE_RECIPE_TYPES = new Set(['Refinement', 'Component'])
@@ -30,7 +36,27 @@ export const defaultProfitMoveFilters: ProfitMoveFilters = {
   kinds: ['refinement', 'craft'],
   maxResults: 80,
   onlyCraftable: false,
+  onlyWithinMyLevels: false,
   disciplines: [],
+  sortMode: 'profit',
+  minVolume: 0,
+}
+
+function sortProfitMoves(moves: ProfitMove[], mode: ProfitMoveSortMode): ProfitMove[] {
+  const sorted = [...moves]
+  switch (mode) {
+    case 'roi':
+      sorted.sort((a, b) => b.listingRoi - a.listingRoi)
+      break
+    case 'volume_weighted':
+      sorted.sort((a, b) => b.volumeWeightedProfit - a.volumeWeightedProfit)
+      break
+    case 'profit':
+    default:
+      sorted.sort((a, b) => b.listingProfit - a.listingProfit)
+      break
+  }
+  return sorted
 }
 
 function profitMoveFromRecipe(
@@ -67,6 +93,7 @@ function profitMoveFromRecipe(
   const listingProfit = listingFlipProfit(inputCost, listTotal)
   const instantProfit = (outputPrice?.buys.unit_price ?? 0) * outputCount - inputCost
   const outputItem = itemMap.get(recipe.output_item_id)
+  const volume = craftVolumeBreakdown(recipe, priceMap)
 
   return {
     recipeId: recipe.id,
@@ -82,6 +109,11 @@ function profitMoveFromRecipe(
     listingRoi: roi(listingProfit, inputCost),
     instantProfit,
     disciplines: recipe.disciplines ?? [],
+    maxCraftVolume: volume.maxCraftVolume,
+    outputVolume: volume.outputVolume,
+    bottleneckVolume: volume.bottleneckVolume,
+    volumeWeightedProfit: volumeWeightedProfit(listingProfit, volume.bottleneckVolume),
+    stackProfit: stackCraftProfit(listingProfit, volume.bottleneckVolume),
   }
 }
 
@@ -131,12 +163,19 @@ export async function scanProfitMoves(
 
   const moves: ProfitMove[] = []
   for (const recipe of recipes) {
-    if (filters.onlyCraftable && craftingContext) {
-      if (
-        !isRecipeCraftable(recipe, craftingContext, {
-          requireUnlock: true,
-          requireLevel: true,
-        })
+    if (craftingContext) {
+      if (filters.onlyCraftable) {
+        if (
+          !isRecipeCraftable(recipe, craftingContext, {
+            requireUnlock: true,
+            requireLevel: true,
+          })
+        ) {
+          continue
+        }
+      } else if (
+        filters.onlyWithinMyLevels &&
+        !meetsCraftingLevel(recipe, craftingContext.maxRatingByDiscipline)
       ) {
         continue
       }
@@ -148,11 +187,11 @@ export async function scanProfitMoves(
     if (!matchesRecipeDisciplines(recipe.disciplines, filters.disciplines)) continue
     if (move.listingProfit < filters.minProfit) continue
     if (move.listingRoi < filters.minRoi) continue
+    if (move.bottleneckVolume < filters.minVolume) continue
     moves.push(move)
   }
 
-  moves.sort((a, b) => b.listingProfit - a.listingProfit)
-  return moves.slice(0, filters.maxResults)
+  return sortProfitMoves(moves, filters.sortMode).slice(0, filters.maxResults)
 }
 
 export function formatProfitMoveInputs(move: ProfitMove): string {

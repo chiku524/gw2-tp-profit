@@ -1,18 +1,31 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { formatCoins } from '../lib/coins'
 import { formatProfitMoveInputs, kindLabel } from '../lib/profitMoves'
 import { disciplineLabel } from '../lib/disciplines'
-import type { ProfitMove, ProfitMoveKind } from '../types'
+import type { ProfitMove, ProfitMoveKind, ProfitMoveSortMode } from '../types'
 
-type SortKey = 'profit' | 'roi' | 'cost' | 'name' | 'kind'
+type SortKey = 'profit' | 'roi' | 'cost' | 'name' | 'kind' | 'volume' | 'weighted' | 'stack'
 type SortDir = 'asc' | 'desc'
 
 type Props = {
   rows: ProfitMove[]
   kindFilter?: ProfitMoveKind[]
+  sortMode?: ProfitMoveSortMode
   compact?: boolean
   onPlanBulk?: (move: ProfitMove) => void
+}
+
+function defaultSortKey(sortMode?: ProfitMoveSortMode): SortKey {
+  switch (sortMode) {
+    case 'roi':
+      return 'roi'
+    case 'volume_weighted':
+      return 'weighted'
+    case 'profit':
+    default:
+      return 'profit'
+  }
 }
 
 function sortRows(rows: ProfitMove[], key: SortKey, dir: SortDir): ProfitMove[] {
@@ -26,6 +39,12 @@ function sortRows(rows: ProfitMove[], key: SortKey, dir: SortDir): ProfitMove[] 
         return a.listingRoi - b.listingRoi
       case 'kind':
         return a.kind.localeCompare(b.kind)
+      case 'volume':
+        return (a.bottleneckVolume ?? 0) - (b.bottleneckVolume ?? 0)
+      case 'weighted':
+        return (a.volumeWeightedProfit ?? 0) - (b.volumeWeightedProfit ?? 0)
+      case 'stack':
+        return (a.stackProfit ?? 0) - (b.stackProfit ?? 0)
       case 'profit':
       default:
         return a.listingProfit - b.listingProfit
@@ -34,11 +53,22 @@ function sortRows(rows: ProfitMove[], key: SortKey, dir: SortDir): ProfitMove[] 
   return dir === 'desc' ? sorted.reverse() : sorted
 }
 
-export function ProfitMovesTable({ rows, kindFilter = [], compact = false, onPlanBulk }: Props) {
+export function ProfitMovesTable({
+  rows,
+  kindFilter = [],
+  sortMode,
+  compact = false,
+  onPlanBulk,
+}: Props) {
   const { openItem } = useItemDetail()
-  const [sortKey, setSortKey] = useState<SortKey>('profit')
+  const [sortKey, setSortKey] = useState<SortKey>(() => defaultSortKey(sortMode))
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [filter, setFilter] = useState('')
+
+  useEffect(() => {
+    setSortKey(defaultSortKey(sortMode))
+    setSortDir('desc')
+  }, [sortMode])
 
   const displayed = useMemo(() => {
     const kindRows = kindFilter.length
@@ -100,8 +130,10 @@ export function ProfitMovesTable({ rows, kindFilter = [], compact = false, onPla
               {!compact ? <th>{sortLabel('cost', 'Input cost')}</th> : null}
               <th>{sortLabel('profit', 'Profit / craft')}</th>
               {!compact ? <th>{sortLabel('roi', 'ROI')}</th> : null}
+              {!compact ? <th>{sortLabel('volume', 'Depth')}</th> : null}
+              {!compact ? <th>{sortLabel('weighted', 'Vol. score')}</th> : null}
+              {!compact ? <th>{sortLabel('stack', 'Stack profit')}</th> : null}
               {!compact ? <th>×25 profit</th> : null}
-              {!compact ? <th>×100 profit</th> : null}
               {!compact && onPlanBulk ? <th></th> : null}
             </tr>
           </thead>
@@ -168,8 +200,16 @@ export function ProfitMovesTable({ rows, kindFilter = [], compact = false, onPla
                 {!compact ? <td>{formatCoins(row.inputCost)}</td> : null}
                 <td className={row.listingProfit > 0 ? 'profit' : 'loss'}>{formatCoins(row.listingProfit)}</td>
                 {!compact ? <td>{row.listingRoi.toFixed(1)}%</td> : null}
+                {!compact ? (
+                  <td title={`Ingredients: ${row.maxCraftVolume ?? 0} crafts · Output demand: ${row.outputVolume ?? 0}`}>
+                    {row.bottleneckVolume ?? 0}
+                  </td>
+                ) : null}
+                {!compact ? (
+                  <td className="profit">{formatCoins(Math.round(row.volumeWeightedProfit ?? 0))}</td>
+                ) : null}
+                {!compact ? <td className="profit">{formatCoins(row.stackProfit ?? 0)}</td> : null}
                 {!compact ? <td className="profit">{formatCoins(row.listingProfit * 25)}</td> : null}
-                {!compact ? <td className="profit">{formatCoins(row.listingProfit * 100)}</td> : null}
                 {!compact && onPlanBulk ? (
                   <td>
                     <button type="button" className="secondary compact-btn" onClick={() => onPlanBulk(row)}>

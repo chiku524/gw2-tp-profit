@@ -9,7 +9,17 @@ import { useCraftingContext } from '../hooks/useCraftingContext'
 import { craftingLevelSummary } from '../lib/recipeAccess'
 import { saveProfitMovesCache } from '../lib/preferences'
 import { DISCIPLINE_OPTIONS, toggleDiscipline } from '../lib/disciplines'
-import type { ProfitMoveFilters, ProfitMoveKind, ProfitMove } from '../types'
+import type { ProfitMoveFilters, ProfitMoveKind, ProfitMove, ProfitMoveSortMode } from '../types'
+
+const SORT_MODE_OPTIONS: { id: ProfitMoveSortMode; label: string; hint: string }[] = [
+  { id: 'profit', label: 'Raw profit', hint: 'Highest profit per craft' },
+  { id: 'roi', label: 'ROI', hint: 'Best return on ingredient cost' },
+  {
+    id: 'volume_weighted',
+    label: 'Volume-weighted',
+    hint: 'Profit × log₁₀(market depth) — favors liquid combines',
+  },
+]
 
 export function CraftsPage() {
   const { canUse, isConnected } = useApiKey()
@@ -49,7 +59,8 @@ export function CraftsPage() {
           <p className="hint">
             Scans GW2 combine recipes (refinements like 2× ore → ingot, and simple component crafts). Profit
             assumes you buy ingredients at lowest sell and list the output undercutting lowest sell (−1c), including
-            5% listing + 10% exchange fees.
+            5% listing + 10% exchange fees. Use volume-weighted sort to favor profitable combines with real market
+            depth.
           </p>
           {isConnected && levelSummary ? (
             <p className="hint">Your highest crafting levels: {levelSummary}</p>
@@ -139,27 +150,83 @@ export function CraftsPage() {
             onChange={(event) => setFilters({ ...filters, maxResults: Number(event.target.value) })}
           />
         </div>
+        <div className="field">
+          <label htmlFor="craft-min-volume">Min market depth</label>
+          <input
+            id="craft-min-volume"
+            type="number"
+            min={0}
+            value={filters.minVolume}
+            onChange={(event) => setFilters({ ...filters, minVolume: Number(event.target.value) })}
+          />
+        </div>
       </div>
 
-      {isConnected ? (
-        canUse('recipeUnlocks') && canUse('craftingLevels') ? (
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={filters.onlyCraftable}
-              onChange={(event) => setFilters({ ...filters, onlyCraftable: event.target.checked })}
-            />
-            Only combines I can craft (discovered recipes + character level)
-          </label>
+      <div className="filter-section-static">
+        <div className="filter-section-summary">
+          <span className="field-label">Sort results by</span>
+          <span className="hint">
+            {SORT_MODE_OPTIONS.find((option) => option.id === filters.sortMode)?.hint}
+          </span>
+        </div>
+        <div className="chip-row kind-filters">
+          {SORT_MODE_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={`chip-btn ${filters.sortMode === option.id ? 'active' : ''}`}
+              onClick={() => setFilters({ ...filters, sortMode: option.id })}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="account-filter-toggles">
+        {isConnected ? (
+          <>
+            {canUse('craftingLevels') ? (
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={filters.onlyWithinMyLevels}
+                  disabled={filters.onlyCraftable}
+                  onChange={(event) =>
+                    setFilters({ ...filters, onlyWithinMyLevels: event.target.checked })
+                  }
+                />
+                Only within my crafting levels
+              </label>
+            ) : (
+              <PermissionHint feature="craftingLevels" compact />
+            )}
+            {canUse('recipeUnlocks') && canUse('craftingLevels') ? (
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={filters.onlyCraftable}
+                  onChange={(event) =>
+                    setFilters({
+                      ...filters,
+                      onlyCraftable: event.target.checked,
+                      onlyWithinMyLevels: event.target.checked ? true : filters.onlyWithinMyLevels,
+                    })
+                  }
+                />
+                Only discovered recipes I can craft (levels + unlocks)
+              </label>
+            ) : canUse('craftingLevels') ? null : (
+              <PermissionHint feature="recipeUnlocks" compact />
+            )}
+          </>
         ) : (
-          <PermissionHint feature="recipeUnlocks" compact />
-        )
-      ) : (
-        <p className="hint">
-          Connect an API key with Unlocks + Characters permissions to filter results to recipes your account can
-          actually craft.
-        </p>
-      )}
+          <p className="hint">
+            Connect an API key with Characters (and Unlocks for recipe filtering) to limit results to
+            what your account can craft.
+          </p>
+        )}
+      </div>
 
       <div className="actions">
         <button type="button" className="primary" disabled={isScanning} onClick={() => void runScan()}>
@@ -187,7 +254,7 @@ export function CraftsPage() {
         </div>
       ) : null}
 
-      <ProfitMovesTable rows={moves} kindFilter={filters.kinds} onPlanBulk={setPlanMove} />
+      <ProfitMovesTable rows={moves} kindFilter={filters.kinds} sortMode={filters.sortMode} onPlanBulk={setPlanMove} />
 
       <ProfitChainsPanel />
 

@@ -975,6 +975,13 @@ footer {
   max-width: 12rem;
 }
 
+.account-filter-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
 .category-filters {
   margin-bottom: 1rem;
 }

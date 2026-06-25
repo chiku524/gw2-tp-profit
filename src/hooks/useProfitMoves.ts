@@ -24,7 +24,10 @@ function loadFilters(): ProfitMoveFilters {
     ...saved,
     kinds: saved.kinds ?? defaultProfitMoveFilters.kinds,
     onlyCraftable: saved.onlyCraftable ?? defaultProfitMoveFilters.onlyCraftable,
+    onlyWithinMyLevels: saved.onlyWithinMyLevels ?? defaultProfitMoveFilters.onlyWithinMyLevels,
     disciplines: saved.disciplines ?? defaultProfitMoveFilters.disciplines,
+    sortMode: saved.sortMode ?? defaultProfitMoveFilters.sortMode,
+    minVolume: saved.minVolume ?? defaultProfitMoveFilters.minVolume,
   }
 }
 
@@ -55,7 +58,7 @@ export function useProfitMoves() {
           if (!abortRef.current) setProgress({ phase: 'scanning', message, loaded, total })
         },
         { get aborted() { return abortRef.current } },
-        filters.onlyCraftable ? craftingContext : null,
+        filters.onlyCraftable || filters.onlyWithinMyLevels ? craftingContext : null,
       )
       if (abortRef.current) return
       setMoves(results)
