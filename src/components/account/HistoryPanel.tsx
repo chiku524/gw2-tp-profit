@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useApiKey } from '../../context/ApiKeyProvider'
 import { formatCoins } from '../../lib/coins'
 import { matchFlips } from '../../lib/flipMatcher'
-import { EXCHANGE_FEE_RATE } from '../../lib/profit'
+import { listingNetRevenue, LISTING_FEE_RATE } from '../../lib/profit'
 import { fetchHistoryOrders, fetchItems } from '../../lib/gw2Api'
 import type { CommerceTransaction, HistorySummary } from '../../types'
 import { FlipMatcherPanel } from './FlipMatcherPanel'
@@ -19,8 +19,9 @@ type HistoryRow = CommerceTransaction & {
 function summarize(buys: CommerceTransaction[], sells: CommerceTransaction[]): HistorySummary {
   const buySpend = buys.reduce((sum, row) => sum + row.price * row.quantity, 0)
   const sellRevenueGross = sells.reduce((sum, row) => sum + row.price * row.quantity, 0)
+  const listingFees = sells.reduce((sum, row) => sum + row.price * row.quantity * LISTING_FEE_RATE, 0)
   const sellRevenueNet = sells.reduce(
-    (sum, row) => sum + row.price * row.quantity * (1 - EXCHANGE_FEE_RATE),
+    (sum, row) => sum + listingNetRevenue(row.price) * row.quantity,
     0,
   )
 
@@ -28,6 +29,7 @@ function summarize(buys: CommerceTransaction[], sells: CommerceTransaction[]): H
     buySpend,
     sellRevenueGross,
     sellRevenueNet,
+    listingFees,
     estimatedNet: sellRevenueNet - buySpend,
     buyCount: buys.length,
     sellCount: sells.length,
@@ -80,7 +82,7 @@ export function HistoryPanel() {
           itemName: itemMap.get(row.item_id) ?? `Item ${row.item_id}`,
           icon: items.find((item) => item.id === row.item_id)?.icon,
           total: row.price * row.quantity,
-          netTotal: row.price * row.quantity * (1 - EXCHANGE_FEE_RATE),
+          netTotal: listingNetRevenue(row.price) * row.quantity,
         })),
       ]
 
@@ -128,8 +130,8 @@ export function HistoryPanel() {
       </div>
 
       <p className="hint">
-        ArenaNet only exposes the last 90 days of fulfilled orders. Sell revenue includes the 10% exchange fee;
-        listing fees are not included in this estimate.
+        ArenaNet only exposes the last 90 days of fulfilled orders. Sell revenue includes the 5% listing fee and
+        10% exchange fee; net figures reflect both.
       </p>
 
       {error ? <p className="error">{error}</p> : null}
@@ -163,8 +165,13 @@ export function HistoryPanel() {
               <small>{summary.sellCount} orders</small>
             </div>
             <div>
-              <span>Sell revenue (after 10% tax)</span>
+              <span>Sell revenue (after fees)</span>
               <strong>{formatCoins(summary.sellRevenueNet)}</strong>
+              <small>incl. 5% listing + 10% exchange</small>
+            </div>
+            <div>
+              <span>Listing fees paid</span>
+              <strong className="loss">{formatCoins(summary.listingFees)}</strong>
             </div>
             <div>
               <span>Estimated net</span>

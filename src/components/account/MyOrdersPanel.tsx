@@ -7,61 +7,9 @@ import {
   fetchAccountRawData,
 } from '../../lib/accountSnapshot'
 import { formatCoins } from '../../lib/coins'
+import { enrichOrders } from '../../lib/orderRows'
 import { fetchCommercePrices, fetchCurrentOrders, fetchItems } from '../../lib/gw2Api'
-import type { CommerceTransaction, OrderRow } from '../../types'
-
-function orderStatus(
-  side: 'buy' | 'sell',
-  yourPrice: number,
-  marketPrice: number,
-): OrderRow['status'] {
-  if (marketPrice <= 0) return 'unknown'
-  if (side === 'sell') {
-    if (yourPrice <= marketPrice) return 'competitive'
-    return 'undercut'
-  }
-  if (yourPrice >= marketPrice) return 'competitive'
-  return 'outbid'
-}
-
-async function enrichOrders(
-  orders: CommerceTransaction[],
-  side: 'buy' | 'sell',
-): Promise<OrderRow[]> {
-  if (orders.length === 0) return []
-
-  const itemIds = [...new Set(orders.map((order) => order.item_id))]
-  const [items, prices] = await Promise.all([
-    fetchItems(itemIds),
-    fetchCommercePrices(itemIds),
-  ])
-
-  const itemMap = new Map(items.map((item) => [item.id, item]))
-  const priceMap = new Map(prices.map((price) => [price.id, price]))
-
-  return orders.map((order) => {
-    const item = itemMap.get(order.item_id)
-    const market = priceMap.get(order.item_id)
-    const marketPrice =
-      side === 'sell' ? (market?.sells.unit_price ?? 0) : (market?.buys.unit_price ?? 0)
-    const status = orderStatus(side, order.price, marketPrice)
-    const gap = side === 'sell' ? order.price - marketPrice : marketPrice - order.price
-
-    return {
-      id: order.id,
-      itemId: order.item_id,
-      itemName: item?.name ?? `Item ${order.item_id}`,
-      icon: item?.icon,
-      side,
-      yourPrice: order.price,
-      marketPrice,
-      quantity: order.quantity,
-      created: order.created,
-      status,
-      gap: Math.max(0, gap),
-    }
-  })
-}
+import type { OrderRow } from '../../types'
 
 export function MyOrdersPanel() {
   const { apiKey, tokenInfo, canUse } = useApiKey()
@@ -175,16 +123,16 @@ export function MyOrdersPanel() {
       {rows.length === 0 && !loading ? (
         <p className="empty-state">No open buy or sell orders on the trading post.</p>
       ) : (
-        <div className="table-wrap">
-          <table>
+        <div className="table-wrap table-sticky">
+          <table className="data-table">
             <thead>
               <tr>
-                <th>Item</th>
+                <th className="col-sticky-left">Item</th>
                 <th>Side</th>
                 <th>Your price</th>
-                <th>Market</th>
-                <th>Qty</th>
-                <th>Status</th>
+                <th className="col-hide-mobile">Market</th>
+                <th className="col-hide-mobile">Qty</th>
+                <th className="col-sticky-right">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -202,9 +150,9 @@ export function MyOrdersPanel() {
                   </td>
                   <td>{row.side === 'buy' ? 'Buy' : 'Sell'}</td>
                   <td>{formatCoins(row.yourPrice)}</td>
-                  <td>{row.marketPrice > 0 ? formatCoins(row.marketPrice) : '—'}</td>
-                  <td>{row.quantity}</td>
-                  <td>
+                  <td className="col-hide-mobile">{row.marketPrice > 0 ? formatCoins(row.marketPrice) : '—'}</td>
+                  <td className="col-hide-mobile">{row.quantity}</td>
+                  <td className="col-sticky-right">
                     <span className={`status-pill ${row.status}`}>
                       {row.status === 'competitive'
                         ? 'Top price'

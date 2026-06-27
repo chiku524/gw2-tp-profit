@@ -1,9 +1,10 @@
+import { useEffect, useState } from 'react'
 import { ScanFilterPanel } from './ScanFilterPanel'
 import { exportFlipsToCsv } from '../lib/exportCsv'
-import { useEffect } from 'react'
 import { FlipTable } from './FlipTable'
 import { ScanPresets } from './ScanPresets'
 import { defaultScanFilters, useFlipScanner } from '../hooks/useFlipScanner'
+import { getPriceCacheStats, PRICE_CACHE_TTL_MS } from '../lib/priceCache'
 import type { ScanFilters } from '../types'
 
 type ScannerApi = ReturnType<typeof useFlipScanner>
@@ -24,7 +25,15 @@ export function ScannerPage({ scanner, browseIds, onBrowseConsumed }: Props) {
     runQuickBrowse,
     stopScan,
     isScanning,
+    usedCache,
   } = scanner
+  const [cacheStats, setCacheStats] = useState<{ count: number; ageMinutes: number | null; isFull: boolean } | null>(
+    null,
+  )
+
+  useEffect(() => {
+    void getPriceCacheStats().then(setCacheStats)
+  }, [progress.phase])
 
   useEffect(() => {
     if (!browseIds?.length) return
@@ -40,11 +49,18 @@ export function ScannerPage({ scanner, browseIds, onBrowseConsumed }: Props) {
         <div>
           <h2>Flip scanner</h2>
           <p className="hint">
-            Scans ~28k items using live GW2 prices (each scan takes 2–3 min). Profit is estimated for a
+            Scans ~28k items using live GW2 prices. Repeat scans use a local price cache (refreshed every{' '}
+            {Math.round(PRICE_CACHE_TTL_MS / 60_000)} min) for near-instant results. Profit is estimated for a
             listing flip: outbid highest buy (+1c), then undercut lowest sell (−1c) after your buy order fills.
             Armor uses highest buy as the exit price (sell to buy order) because wide spreads make undercutting
             listings unrealistic.
           </p>
+          {cacheStats?.isFull ? (
+            <p className="hint cache-hint">
+              Price cache ready · {cacheStats.count.toLocaleString()} items
+              {cacheStats.ageMinutes !== null ? ` · ${cacheStats.ageMinutes}m old` : ''}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -96,7 +112,16 @@ export function ScannerPage({ scanner, browseIds, onBrowseConsumed }: Props) {
 
       <div className="actions">
         <button type="button" className="primary" disabled={isScanning} onClick={() => void runScan()}>
-          {isScanning ? 'Scanning…' : 'Scan trading post'}
+          {isScanning ? 'Scanning…' : cacheStats?.isFull ? 'Rescan (cached)' : 'Scan trading post'}
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          disabled={isScanning}
+          onClick={() => void runScan({ forceLive: true })}
+          title="Bypass cache and fetch fresh prices from the GW2 API (~2–3 min)"
+        >
+          Live scan
         </button>
         {isScanning ? (
           <button type="button" className="secondary" onClick={stopScan}>
@@ -119,6 +144,10 @@ export function ScannerPage({ scanner, browseIds, onBrowseConsumed }: Props) {
           </>
         )}
       </div>
+
+      {progress.phase === 'done' && usedCache ? (
+        <p className="hint cache-hint">Results used cached prices. Run a live scan for the freshest market data.</p>
+      ) : null}
 
       {progress.phase !== 'idle' ? (
         <div className="progress">

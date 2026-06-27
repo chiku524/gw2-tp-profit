@@ -1,4 +1,5 @@
 import { gw2Fetch, gw2FetchAllPages } from './gw2Fetch'
+import { getCachedPrices, putCachedPrices } from './priceCache'
 import type {
   CommerceDelivery,
   CommerceListings,
@@ -18,8 +19,21 @@ export async function fetchCommercePriceIds(): Promise<number[]> {
   return gw2Fetch<number[]>('/commerce/prices')
 }
 
-export async function fetchCommercePrices(ids: number[]): Promise<CommercePrice[]> {
+export async function fetchCommercePrices(
+  ids: number[],
+  options?: { skipCache?: boolean },
+): Promise<CommercePrice[]> {
   if (ids.length === 0) return []
+
+  if (!options?.skipCache) {
+    const { hits, misses } = await getCachedPrices(ids)
+    if (misses.length === 0) return hits
+
+    const fetched = await fetchCommercePrices(misses, { skipCache: true })
+    void putCachedPrices(fetched)
+    return [...hits, ...fetched]
+  }
+
   const result = await gw2Fetch<CommercePrice[]>(`/commerce/prices?ids=${ids.join(',')}`)
   return Array.isArray(result) ? result : [result]
 }
@@ -99,13 +113,17 @@ export async function fetchRecipesBatched(
 export async function* batchCommercePrices(
   ids: number[],
   onProgress?: (loaded: number, total: number) => void,
+  options?: { skipCache?: boolean; batchDelayMs?: number },
 ): AsyncGenerator<CommercePrice[]> {
+  const delay = options?.batchDelayMs ?? 120
   for (let index = 0; index < ids.length; index += BATCH_SIZE) {
     const batch = ids.slice(index, index + BATCH_SIZE)
-    const prices = await fetchCommercePrices(batch)
+    const prices = await fetchCommercePrices(batch, { skipCache: options?.skipCache })
     onProgress?.(Math.min(index + batch.length, ids.length), ids.length)
     yield prices
-    await new Promise((resolve) => setTimeout(resolve, 120))
+    if (index + BATCH_SIZE < ids.length && delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
   }
 }
 

@@ -14,15 +14,18 @@ import { MobileNav } from './components/layout/MobileNav'
 import { useApiKey } from './context/ApiKeyProvider'
 import { useFlipScanner } from './hooks/useFlipScanner'
 import { loadPreferredTab, savePreferredTab } from './lib/preferences'
+import { accountSectionFromHash, parseHash, writeHash, type AccountSection } from './lib/urlState'
 import type { Gw2Item } from './types'
 import './App.css'
 
-type AccountSection = 'orders' | 'delivery' | 'history' | 'crafting' | 'value' | 'capital' | 'sell'
+function initialTab(): AppTab {
+  return parseHash()?.tab ?? loadPreferredTab()
+}
 
 function App() {
-  const [tab, setTab] = useState<AppTab>(() => loadPreferredTab())
+  const [tab, setTab] = useState<AppTab>(initialTab)
   const [browseIds, setBrowseIds] = useState<number[] | null>(null)
-  const [accountSection, setAccountSection] = useState<AccountSection>('orders')
+  const [accountSection, setAccountSection] = useState<AccountSection>(() => accountSectionFromHash())
   const [craftPreload, setCraftPreload] = useState<Gw2Item | null>(null)
   const { isConnected, account, loading: keyLoading } = useApiKey()
   const scanner = useFlipScanner()
@@ -34,10 +37,35 @@ function App() {
     }
   }, [scanner.progress.phase, scanner.opportunities])
 
-  const goTab = useCallback((next: AppTab) => {
+  const goTab = useCallback((next: AppTab, section?: AccountSection) => {
     setTab(next)
     savePreferredTab(next)
-  }, [])
+    if (section) setAccountSection(section)
+    writeHash({ tab: next, accountSection: next === 'account' ? (section ?? accountSection) : undefined })
+  }, [accountSection])
+
+  const goAccountSection = useCallback(
+    (section: AccountSection) => {
+      setAccountSection(section)
+      setTab('account')
+      savePreferredTab('account')
+      writeHash({ tab: 'account', accountSection: section })
+    },
+    [],
+  )
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const state = parseHash()
+      if (!state) return
+      setTab(state.tab)
+      savePreferredTab(state.tab)
+      if (state.accountSection) setAccountSection(state.accountSection)
+    }
+    window.addEventListener('hashchange', onHashChange)
+    if (!window.location.hash) writeHash({ tab, accountSection: tab === 'account' ? accountSection : undefined })
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- mount-only hash bootstrap
 
   const handleBrowseGroup = useCallback((itemIds: number[]) => {
     setBrowseIds(itemIds)
@@ -63,10 +91,9 @@ function App() {
   const openCraftingForItem = useCallback(
     (item: Gw2Item) => {
       setCraftPreload(item)
-      setAccountSection('crafting')
-      goTab('account')
+      goAccountSection('crafting')
     },
-    [goTab],
+    [goAccountSection],
   )
 
   return (
@@ -120,6 +147,7 @@ function App() {
             onBrowseGroup={handleBrowseGroup}
             onGoAccount={() => goTab('account')}
             onGoCrafts={() => goTab('crafts')}
+            onGoSell={() => goAccountSection('sell')}
           />
         ) : null}
         {tab === 'scanner' ? (
@@ -131,7 +159,7 @@ function App() {
         {tab === 'account' ? (
           <AccountPage
             section={accountSection}
-            onSectionChange={setAccountSection}
+            onSectionChange={goAccountSection}
             craftPreload={craftPreload}
             onCraftPreloadConsumed={() => setCraftPreload(null)}
           />

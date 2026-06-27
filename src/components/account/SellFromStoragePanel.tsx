@@ -70,15 +70,15 @@ export function SellFromStoragePanel() {
       {rows.length === 0 && !loading ? (
         <p className="empty-state">No sellable items found in exposed storage.</p>
       ) : (
-        <div className="table-wrap">
-          <table>
+        <div className="table-wrap table-sticky">
+          <table className="data-table">
             <thead>
               <tr>
-                <th>Item</th>
+                <th className="col-sticky-left">Item</th>
                 <th>Qty</th>
-                <th>Location</th>
-                <th>List revenue</th>
-                <th>Instant sell</th>
+                <th className="col-hide-mobile">Location</th>
+                <th className="col-sticky-right">List revenue</th>
+                <th className="col-hide-mobile">Instant sell</th>
               </tr>
             </thead>
             <tbody>
@@ -95,9 +95,9 @@ export function SellFromStoragePanel() {
                     </button>
                   </td>
                   <td>{row.quantity}</td>
-                  <td className="hint-cell">{row.sources}</td>
-                  <td className="profit">{formatCoins(row.listRevenue)}</td>
-                  <td>{formatCoins(row.instantRevenue)}</td>
+                  <td className="hint-cell col-hide-mobile">{row.sources}</td>
+                  <td className="profit col-sticky-right">{formatCoins(row.listRevenue)}</td>
+                  <td className="col-hide-mobile">{formatCoins(row.instantRevenue)}</td>
                 </tr>
               ))}
             </tbody>

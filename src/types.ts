@@ -209,6 +209,7 @@ export type HistorySummary = {
   buySpend: number
   sellRevenueGross: number
   sellRevenueNet: number
+  listingFees: number
   estimatedNet: number
   buyCount: number
   sellCount: number

@@ -41,11 +41,15 @@ export async function fetchItemsBatched(ids: number[]): Promise<Gw2Item[]> {
   return results
 }
 
-export async function enrichFlipOpportunities(rows: FlipOpportunity[]): Promise<FlipOpportunity[]> {
+export async function enrichFlipOpportunities(
+  rows: FlipOpportunity[],
+  options?: { includeDisciplines?: boolean },
+): Promise<FlipOpportunity[]> {
   if (rows.length === 0) return rows
 
   const ids = rows.map((row) => row.itemId)
-  const disciplineIndex = await getDisciplineIndex()
+  const includeDisciplines = options?.includeDisciplines ?? false
+  const disciplineIndex = includeDisciplines ? await getDisciplineIndex() : null
   await fetchItemsBatched(ids)
 
   return rows.map((row) => {
@@ -53,7 +57,7 @@ export async function enrichFlipOpportunities(rows: FlipOpportunity[]): Promise<
     if (!item) return row
 
     const itemType = item.type ?? row.itemType
-    const itemDisciplines = disciplinesForItem(row.itemId, disciplineIndex)
+    const itemDisciplines = disciplineIndex ? disciplinesForItem(row.itemId, disciplineIndex) : []
     const sellStrategy = resolveFlipSellStrategy(row.buyPrice, row.sellPrice, itemType)
     const listingProfit = spreadListingFlipProfit(row.buyPrice, row.sellPrice, sellStrategy)
     const flipBuyCost = suggestOutbidBuy(row.sellPrice)

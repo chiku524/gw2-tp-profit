@@ -2,6 +2,7 @@ import { GemExchangePanel } from './GemExchangePanel'
 import { AccountPulse } from './AccountPulse'
 import { RecentItemsPanel } from './RecentItemsPanel'
 import { RecommendedProfitMoves } from './RecommendedProfitMoves'
+import { StorageSellPulse } from './StorageSellPulse'
 import { useEffect, useState } from 'react'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
@@ -17,9 +18,10 @@ type Props = {
   onBrowseGroup: (itemIds: number[]) => void
   onGoAccount: () => void
   onGoCrafts: () => void
+  onGoSell: () => void
 }
 
-export function MarketDashboard({ lastScan, onBrowseGroup, onGoAccount, onGoCrafts }: Props) {
+export function MarketDashboard({ lastScan, onBrowseGroup, onGoAccount, onGoCrafts, onGoSell }: Props) {
   const { entries } = useWatchlist()
   const { openItem } = useItemDetail()
   const [gems, setGems] = useState<GemExchange[]>([])
@@ -80,6 +82,8 @@ export function MarketDashboard({ lastScan, onBrowseGroup, onGoAccount, onGoCraf
       </section>
 
       <AccountPulse onGoAccount={onGoAccount} />
+
+      <StorageSellPulse onGoSell={onGoSell} />
 
       <GemExchangePanel />
 

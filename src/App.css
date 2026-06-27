@@ -230,6 +230,58 @@ footer p {
 .table-wrap {
   overflow-x: auto;
   margin-top: 1rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.table-wrap.table-sticky {
+  position: relative;
+}
+
+.table-wrap.table-sticky::after {
+  content: '';
+  position: sticky;
+  right: 0;
+  top: 0;
+  float: right;
+  width: 1.5rem;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(to left, rgba(18, 14, 12, 0.85), transparent);
+  margin-left: -1.5rem;
+}
+
+.data-table th.col-sticky-left,
+.data-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: rgba(18, 14, 12, 0.98);
+}
+
+.data-table th.col-sticky-left-2,
+.data-table td:nth-child(2) {
+  position: sticky;
+  left: 2.5rem;
+  z-index: 2;
+  background: rgba(18, 14, 12, 0.98);
+}
+
+.data-table th.col-sticky-right,
+.data-table td.col-sticky-right,
+.data-table td:nth-child(7) {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: rgba(18, 14, 12, 0.98);
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.2);
+}
+
+.price-chart svg {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
 table {
@@ -1365,10 +1417,163 @@ footer {
     grid-template-columns: 1fr;
   }
 
-  th:nth-child(7),
-  td:nth-child(7),
-  th:nth-child(8),
-  td:nth-child(8) {
+  .col-hide-mobile {
     display: none;
   }
+
+  .table-wrap.table-sticky::after {
+    display: none;
+  }
+
+  .data-table th.col-sticky-left,
+  .data-table td:first-child,
+  .data-table th.col-sticky-left-2,
+  .data-table td:nth-child(2),
+  .data-table th.col-sticky-right,
+  .data-table td.col-sticky-right,
+  .data-table td:nth-child(7) {
+    position: static;
+    box-shadow: none;
+  }
+
+  .mobile-card-list {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .mobile-card {
+    border: 1px solid rgba(240, 179, 93, 0.14);
+    border-radius: 0.85rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .mobile-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .mobile-card-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    border: none;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .mobile-card-title {
+    font-weight: 600;
+    line-height: 1.25;
+    font-size: 0.95rem;
+  }
+
+  .mobile-card-profit {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.65rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 0.65rem;
+    background: rgba(240, 179, 93, 0.08);
+    margin-bottom: 0.55rem;
+  }
+
+  .mobile-card-profit-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #c9b79b;
+    width: 100%;
+  }
+
+  .mobile-card-profit strong {
+    font-size: 1.15rem;
+  }
+
+  .mobile-card-roi {
+    font-size: 0.85rem;
+    color: #a9957d;
+  }
+
+  .mobile-card-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+  }
+
+  .mobile-card-stats > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .mobile-card-stats dt {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #a9957d;
+  }
+
+  .mobile-card-stats dd {
+    margin: 0;
+    font-size: 0.88rem;
+  }
+
+  .price-chart svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .chart-legend {
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .chip-row {
+    gap: 0.45rem;
+  }
+
+  .chip.copy-chip {
+    font-size: 0.78rem;
+  }
+}
+
+.cache-hint {
+  color: rgba(240, 179, 93, 0.85);
+  font-size: 0.9rem;
+}
+
+.price-trend {
+  display: inline-block;
+  min-width: 1.25rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+.price-trend-up {
+  color: #6ecf8a;
+}
+
+.price-trend-down {
+  color: #e07070;
+}
+
+.price-trend-flat {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.snapshot-list.compact {
+  margin-top: 0.75rem;
 }

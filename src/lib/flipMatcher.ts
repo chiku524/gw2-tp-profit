@@ -1,4 +1,4 @@
-import { EXCHANGE_FEE_RATE } from './profit'
+import { listingNetRevenue } from './profit'
 import type { CommerceTransaction } from '../types'
 
 export type MatchedFlip = {
@@ -65,7 +65,7 @@ export function matchFlips(
     while (remaining > 0 && lots.length > 0) {
       const lot = lots[0]
       const matched = Math.min(remaining, lot.quantity)
-      const netSell = sell.price * (1 - EXCHANGE_FEE_RATE)
+      const netSell = listingNetRevenue(sell.price)
       const profit = Math.round((netSell - lot.price) * matched)
 
       flips.push({

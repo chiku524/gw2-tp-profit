@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { batchCommercePrices, fetchCommercePriceIds, fetchCommercePrices } from '../lib/gw2Api'
 import { enrichFlipOpportunities } from '../lib/itemNames'
+import { loadAllFreshPrices, putCachedPrices } from '../lib/priceCache'
 import { loadScanFilters, saveScanFilters } from '../lib/preferences'
 import { matchesFromPrices } from '../lib/scannerMatch'
 import type { FlipOpportunity, ScanFilters, ScanProgress } from '../types'
@@ -28,10 +29,15 @@ function loadFilters(): ScanFilters {
   }
 }
 
+function needsDisciplineData(filters: ScanFilters): boolean {
+  return filters.disciplines.length > 0 || filters.subtypes.length > 0
+}
+
 export function useFlipScanner() {
   const [opportunities, setOpportunities] = useState<FlipOpportunity[]>([])
   const [progress, setProgress] = useState<ScanProgress>({ phase: 'idle', totalIds: 0, loadedPrices: 0 })
   const [filters, setFiltersState] = useState<ScanFilters>(loadFilters)
+  const [usedCache, setUsedCache] = useState(false)
   const abortRef = useRef(false)
   const publishGeneration = useRef(0)
 
@@ -43,12 +49,17 @@ export function useFlipScanner() {
     })
   }, [])
 
-  const publishMatches = useCallback(async (rows: FlipOpportunity[]) => {
-    const generation = ++publishGeneration.current
-    const enriched = await enrichFlipOpportunities(rows)
-    if (abortRef.current || generation !== publishGeneration.current) return
-    setOpportunities(enriched)
-  }, [])
+  const publishMatches = useCallback(
+    async (rows: FlipOpportunity[], scanFilters: ScanFilters) => {
+      const generation = ++publishGeneration.current
+      const enriched = await enrichFlipOpportunities(rows, {
+        includeDisciplines: needsDisciplineData(scanFilters),
+      })
+      if (abortRef.current || generation !== publishGeneration.current) return
+      setOpportunities(enriched)
+    },
+    [],
+  )
 
   const stopScan = useCallback(() => {
     abortRef.current = true
@@ -59,45 +70,35 @@ export function useFlipScanner() {
     )
   }, [])
 
-  const runScan = useCallback(async () => {
-    abortRef.current = false
-    publishGeneration.current += 1
-    setOpportunities([])
-    setProgress({ phase: 'loading-ids', totalIds: 0, loadedPrices: 0 })
-
-    try {
-      const ids = await fetchCommercePriceIds()
-      if (abortRef.current) return
-
-      setProgress({ phase: 'loading-prices', totalIds: ids.length, loadedPrices: 0, message: 'Scanning prices…' })
-
+  const processPrices = useCallback(
+    async (allPrices: { id: number }[], scanFilters: ScanFilters, fromCache: boolean) => {
+      setUsedCache(fromCache)
       const matches: FlipOpportunity[] = []
       const categoryNote =
-        filters.categories.length > 0 ||
-        filters.disciplines.length > 0 ||
-        filters.subtypes.length > 0
+        scanFilters.categories.length > 0 ||
+        scanFilters.disciplines.length > 0 ||
+        scanFilters.subtypes.length > 0
           ? ` · ${[
-              filters.categories.length > 0 ? `${filters.categories.length} categor${filters.categories.length === 1 ? 'y' : 'ies'}` : '',
-              filters.disciplines.length > 0 ? `${filters.disciplines.length} discipline${filters.disciplines.length === 1 ? '' : 's'}` : '',
-              filters.subtypes.length > 0 ? `${filters.subtypes.length} subtype${filters.subtypes.length === 1 ? '' : 's'}` : '',
+              scanFilters.categories.length > 0
+                ? `${scanFilters.categories.length} categor${scanFilters.categories.length === 1 ? 'y' : 'ies'}`
+                : '',
+              scanFilters.disciplines.length > 0
+                ? `${scanFilters.disciplines.length} discipline${scanFilters.disciplines.length === 1 ? '' : 's'}`
+                : '',
+              scanFilters.subtypes.length > 0
+                ? `${scanFilters.subtypes.length} subtype${scanFilters.subtypes.length === 1 ? '' : 's'}`
+                : '',
             ]
               .filter(Boolean)
               .join(', ')}`
           : ''
 
-      for await (const batch of batchCommercePrices(ids, (loaded, total) => {
-        if (!abortRef.current) {
-          setProgress({
-            phase: 'loading-prices',
-            totalIds: total,
-            loadedPrices: loaded,
-            message: `Scanning… ${matches.length} matches${categoryNote} · ${loaded.toLocaleString()}/${total.toLocaleString()}`,
-          })
-        }
-      })) {
-        if (abortRef.current) break
+      const batchSize = fromCache ? 2000 : 200
+      for (let index = 0; index < allPrices.length; index += batchSize) {
+        if (abortRef.current) return
 
-        const batchMatches = await matchesFromPrices(batch, filters, {
+        const batch = allPrices.slice(index, index + batchSize) as import('../types').CommercePrice[]
+        const batchMatches = await matchesFromPrices(batch, scanFilters, {
           onProgress: (message, loaded, total) => {
             if (!abortRef.current) {
               setProgress({
@@ -113,16 +114,21 @@ export function useFlipScanner() {
         matches.push(...batchMatches)
 
         matches.sort((a, b) => b.listingProfit - a.listingProfit)
-        if (matches.length > filters.maxItems * 3) {
-          matches.length = filters.maxItems * 3
+        if (matches.length > scanFilters.maxItems * 3) {
+          matches.length = scanFilters.maxItems * 3
         }
 
+        setProgress({
+          phase: 'loading-prices',
+          totalIds: allPrices.length,
+          loadedPrices: Math.min(index + batch.length, allPrices.length),
+          message: fromCache
+            ? `Filtering cached prices… ${matches.length} matches${categoryNote}`
+            : `Scanning… ${matches.length} matches${categoryNote} · ${Math.min(index + batch.length, allPrices.length).toLocaleString()}/${allPrices.length.toLocaleString()}`,
+        })
+
         if (matches.length > 0 && matches.length % 20 === 0) {
-          setProgress((current) => ({
-            ...current,
-            message: `Scanning… ${matches.length} matches${categoryNote} · loading names…`,
-          }))
-          void publishMatches(matches.slice(0, filters.maxItems))
+          void publishMatches(matches.slice(0, scanFilters.maxItems), scanFilters)
         }
       }
 
@@ -130,39 +136,105 @@ export function useFlipScanner() {
 
       setProgress({
         phase: 'loading-items',
-        totalIds: ids.length,
-        loadedPrices: ids.length,
+        totalIds: allPrices.length,
+        loadedPrices: allPrices.length,
         message: 'Loading item names…',
       })
 
-      const top = matches.slice(0, filters.maxItems)
-      await publishMatches(top)
+      const top = matches.slice(0, scanFilters.maxItems)
+      await publishMatches(top, scanFilters)
 
       setProgress({
         phase: 'done',
-        totalIds: ids.length,
-        loadedPrices: ids.length,
-        message: `Found ${top.length} opportunities${categoryNote}`,
+        totalIds: allPrices.length,
+        loadedPrices: allPrices.length,
+        message: fromCache
+          ? `Found ${top.length} opportunities (cached prices)${categoryNote}`
+          : `Found ${top.length} opportunities${categoryNote}`,
       })
-    } catch (error) {
-      setProgress({
-        phase: 'error',
-        totalIds: 0,
-        loadedPrices: 0,
-        message: error instanceof Error ? error.message : 'Scan failed',
-      })
-    }
-  }, [filters, publishMatches])
+    },
+    [publishMatches],
+  )
+
+  const runScan = useCallback(
+    async (options?: { forceLive?: boolean }) => {
+      abortRef.current = false
+      publishGeneration.current += 1
+      setOpportunities([])
+      setUsedCache(false)
+      setProgress({ phase: 'loading-ids', totalIds: 0, loadedPrices: 0 })
+
+      try {
+        const ids = await fetchCommercePriceIds()
+        if (abortRef.current) return
+
+        if (!options?.forceLive) {
+          const cached = await loadAllFreshPrices()
+          if (cached && cached.length >= ids.length * 0.98) {
+            setProgress({
+              phase: 'loading-prices',
+              totalIds: cached.length,
+              loadedPrices: 0,
+              message: 'Using cached prices (instant rescan)…',
+            })
+            await processPrices(cached, filters, true)
+            return
+          }
+        }
+
+        setProgress({
+          phase: 'loading-prices',
+          totalIds: ids.length,
+          loadedPrices: 0,
+          message: options?.forceLive ? 'Fetching live prices…' : 'Scanning prices…',
+        })
+
+        const allPrices: import('../types').CommercePrice[] = []
+        for await (const batch of batchCommercePrices(
+          ids,
+          (loaded, total) => {
+            if (!abortRef.current) {
+              setProgress({
+                phase: 'loading-prices',
+                totalIds: total,
+                loadedPrices: loaded,
+                message: `Scanning… ${loaded.toLocaleString()}/${total.toLocaleString()}`,
+              })
+            }
+          },
+          { skipCache: options?.forceLive },
+        )) {
+          if (abortRef.current) break
+          allPrices.push(...batch)
+        }
+
+        if (abortRef.current) return
+
+        void putCachedPrices(allPrices, true)
+        await processPrices(allPrices, filters, false)
+      } catch (error) {
+        setProgress({
+          phase: 'error',
+          totalIds: 0,
+          loadedPrices: 0,
+          message: error instanceof Error ? error.message : 'Scan failed',
+        })
+      }
+    },
+    [filters, processPrices],
+  )
 
   const runQuickBrowse = useCallback(
     async (itemIds: number[]) => {
       setProgress({ phase: 'loading-prices', totalIds: itemIds.length, loadedPrices: 0 })
       setOpportunities([])
+      setUsedCache(false)
 
       try {
         const prices = await fetchCommercePrices(itemIds)
-        const matches = (await matchesFromPrices(prices, { ...filters, minProfit: 0, minRoi: 0, minVolume: 0 }))
-          .sort((a, b) => b.listingProfit - a.listingProfit)
+        const matches = (
+          await matchesFromPrices(prices, { ...filters, minProfit: 0, minRoi: 0, minVolume: 0 })
+        ).sort((a, b) => b.listingProfit - a.listingProfit)
 
         setProgress({
           phase: 'loading-items',
@@ -171,7 +243,7 @@ export function useFlipScanner() {
           message: 'Loading item names…',
         })
 
-        await publishMatches(matches)
+        await publishMatches(matches, filters)
 
         setProgress({
           phase: 'done',
@@ -199,6 +271,7 @@ export function useFlipScanner() {
     runScan,
     runQuickBrowse,
     stopScan,
+    usedCache,
     isScanning:
       progress.phase === 'loading-ids' ||
       progress.phase === 'loading-prices' ||

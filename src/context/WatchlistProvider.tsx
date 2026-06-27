@@ -2,10 +2,12 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
+import { registerItemsForTracking } from '../lib/priceHistory'
 import { loadWatchlist, saveWatchlist, type WatchlistEntry } from '../lib/marketStorage'
 
 type WatchlistContextValue = {
@@ -19,6 +21,10 @@ const WatchlistContext = createContext<WatchlistContextValue | null>(null)
 
 export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<WatchlistEntry[]>(() => loadWatchlist())
+
+  useEffect(() => {
+    registerItemsForTracking(entries.map((entry) => entry.itemId))
+  }, [entries])
 
   const persist = useCallback((next: WatchlistEntry[]) => {
     setEntries(next)

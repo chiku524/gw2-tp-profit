@@ -8,7 +8,12 @@ type Props = {
 
 export function PriceHistoryChart({ history, height = 140 }: Props) {
   if (history.length < 2) {
-    return <p className="hint">Price history builds as you browse items (local + server snapshots).</p>
+    return (
+      <p className="hint">
+        Price history builds from local snapshots plus server tracking (~100 core items every 6h, your
+        watchlist &amp; viewed items too).
+      </p>
+    )
   }
 
   const width = 480
@@ -30,6 +35,7 @@ export function PriceHistoryChart({ history, height = 140 }: Props) {
   const sellPath = history.map((row, index) => `${index === 0 ? 'M' : 'L'} ${x(row.t)} ${y(row.sell)}`).join(' ')
 
   const last = history[history.length - 1]
+  const spanDays = Math.max(1, Math.round((maxT - minT) / 86_400_000))
 
   return (
     <section className="price-chart">
@@ -37,11 +43,13 @@ export function PriceHistoryChart({ history, height = 140 }: Props) {
         <span className="legend-buy">Lowest sell: {formatCoins(last.buy)}</span>
         <span className="legend-sell">Highest buy: {formatCoins(last.sell)}</span>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Price history chart">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Price history chart" preserveAspectRatio="none">
         <path d={buyPath} className="chart-line buy" fill="none" />
         <path d={sellPath} className="chart-line sell" fill="none" />
       </svg>
-      <p className="hint">{history.length} snapshots · oldest {new Date(minT).toLocaleDateString()}</p>
+      <p className="hint">
+        {history.length} snapshots · ~{spanDays}d span · oldest {new Date(minT).toLocaleDateString()}
+      </p>
     </section>
   )
 }

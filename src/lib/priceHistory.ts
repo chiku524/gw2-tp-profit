@@ -3,10 +3,15 @@ import type { CommercePrice, PriceSnapshot } from '../types'
 export type { PriceSnapshot }
 
 const STORAGE_KEY = 'gw2-tp-price-history'
-const MAX_ITEMS = 200
-const MAX_POINTS_PER_ITEM = 60
+const MAX_ITEMS = 400
+const MAX_POINTS_PER_ITEM = 120
+const PUSH_COOLDOWN_MS = 30 * 60_000
 
 type Store = Record<string, PriceSnapshot[]>
+
+const lastPushAt = new Map<number, number>()
+const pendingRegister = new Set<number>()
+let registerTimer: number | null = null
 
 function readStore(): Store {
   try {
@@ -54,7 +59,6 @@ function writeStore(store: Store): boolean {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned))
     return true
   } catch {
-    // Storage full — drop oldest half and retry once.
     const keys = Object.keys(pruned)
     if (keys.length <= 10) return false
 
@@ -88,6 +92,15 @@ function queueWrite(store: Store): void {
   }, 250)
 }
 
+function mergeSnapshots(a: PriceSnapshot[], b: PriceSnapshot[]): PriceSnapshot[] {
+  const byTime = new Map<number, PriceSnapshot>()
+  for (const row of [...a, ...b]) {
+    if (!row?.t) continue
+    byTime.set(row.t, row)
+  }
+  return [...byTime.values()].sort((left, right) => left.t - right.t)
+}
+
 function appendSnapshot(store: Store, price: CommercePrice): Store {
   const buy = price.sells.unit_price
   const sell = price.buys.unit_price
@@ -102,12 +115,53 @@ function appendSnapshot(store: Store, price: CommercePrice): Store {
     return store
   }
 
+  queueServerSync(price.id, snapshot)
   return { ...store, [key]: [...existing, snapshot].slice(-MAX_POINTS_PER_ITEM) }
+}
+
+function queueServerSync(itemId: number, snapshot: PriceSnapshot): void {
+  const last = lastPushAt.get(itemId) ?? 0
+  if (Date.now() - last < PUSH_COOLDOWN_MS) return
+  lastPushAt.set(itemId, Date.now())
+
+  void fetch(`/api/history/${itemId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(snapshot),
+  }).catch(() => {
+    lastPushAt.delete(itemId)
+  })
+}
+
+function queueRegister(itemIds: number[]): void {
+  for (const id of itemIds) pendingRegister.add(id)
+  if (registerTimer !== null) return
+
+  registerTimer = window.setTimeout(() => {
+    registerTimer = null
+    const ids = [...pendingRegister]
+    pendingRegister.clear()
+    if (ids.length === 0) return
+
+    void fetch('/api/history/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemIds: ids }),
+    }).catch(() => {
+      /* optional */
+    })
+  }, 500)
+}
+
+export function registerItemsForTracking(itemIds: number[]): void {
+  if (itemIds.length === 0) return
+  queueRegister(itemIds)
 }
 
 export function recordPriceSnapshot(price: CommercePrice): void {
   const store = readStore()
   queueWrite(appendSnapshot(store, price))
+  registerItemsForTracking([price.id])
 }
 
 export function recordPriceSnapshots(prices: CommercePrice[]): void {
@@ -118,6 +172,7 @@ export function recordPriceSnapshots(prices: CommercePrice[]): void {
     store = appendSnapshot(store, price)
   }
   queueWrite(store)
+  registerItemsForTracking(prices.map((price) => price.id))
 }
 
 export function getLocalPriceHistory(itemId: number): PriceSnapshot[] {
@@ -125,15 +180,24 @@ export function getLocalPriceHistory(itemId: number): PriceSnapshot[] {
 }
 
 export async function fetchPriceHistory(itemId: number): Promise<PriceSnapshot[]> {
+  const local = getLocalPriceHistory(itemId)
+
   try {
-    const response = await fetch(`/api/history/${itemId}`)
+    const localParam = local.length > 0 ? encodeURIComponent(JSON.stringify(local.slice(-80))) : ''
+    const url = localParam
+      ? `/api/history/${itemId}?local=${localParam}`
+      : `/api/history/${itemId}`
+    const response = await fetch(url)
     if (!response.ok) throw new Error('server unavailable')
     const remote = (await response.json()) as PriceSnapshot[]
-    if (Array.isArray(remote) && remote.length > 0) return remote
+    if (Array.isArray(remote) && remote.length > 0) {
+      return mergeSnapshots(local, remote).slice(-MAX_POINTS_PER_ITEM)
+    }
   } catch {
     // fall through to local cache
   }
-  return getLocalPriceHistory(itemId)
+
+  return local
 }
 
 // Prune on load so a prior full-scan does not keep blocking writes.

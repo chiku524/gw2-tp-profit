@@ -1,13 +1,18 @@
 import { loadWatchlistAutoRefresh, saveWatchlistAutoRefresh } from '../lib/preferences'
 import { useCallback, useEffect, useState } from 'react'
+import { useApiKey } from '../context/ApiKeyProvider'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
+import { useIsMobile } from '../hooks/useMediaQuery'
+import { MobileWatchlistCards } from './MobileWatchlistCards'
 import { evaluatePriceAlerts } from '../lib/priceAlerts'
 import { evaluateExtendedAlerts } from '../lib/alertEngine'
 import { enrichWatchlistLiquidity } from '../lib/liquidity'
+import { fetchEnrichedOrders } from '../lib/orderRows'
 import { riskFlagsForWatchlist } from '../lib/riskFlags'
 import { formatCoins } from '../lib/coins'
 import { recordPriceSnapshots } from '../lib/priceHistory'
+import { profitTrend, trendLabel, trendTitle } from '../lib/priceTrend'
 import { fetchCommercePrices, fetchItems } from '../lib/gw2Api'
 import { enrichFlipOpportunities } from '../lib/itemNames'
 import { opportunityFromPrice } from '../lib/profit'
@@ -15,7 +20,9 @@ import type { WatchlistSnapshot } from '../types'
 
 export function WatchlistPanel() {
   const { entries, remove } = useWatchlist()
+  const { apiKey, canUse, isConnected } = useApiKey()
   const { openItem } = useItemDetail()
+  const isMobile = useIsMobile()
   const [rows, setRows] = useState<WatchlistSnapshot[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,7 +39,11 @@ export function WatchlistPanel() {
 
     try {
       const ids = entries.map((entry) => entry.itemId)
-      const [prices, items] = await Promise.all([fetchCommercePrices(ids), fetchItems(ids)])
+      const [prices, items, orders] = await Promise.all([
+        fetchCommercePrices(ids),
+        fetchItems(ids),
+        apiKey && isConnected && canUse('orders') ? fetchEnrichedOrders(apiKey) : Promise.resolve([]),
+      ])
       recordPriceSnapshots(prices)
       const itemMap = new Map(items.map((item) => [item.id, item]))
 
@@ -83,13 +94,13 @@ export function WatchlistPanel() {
       snapshots.sort((a, b) => b.listingProfit - a.listingProfit)
       setRows(snapshots)
       evaluatePriceAlerts(snapshots)
-      evaluateExtendedAlerts(snapshots)
+      evaluateExtendedAlerts(snapshots, orders)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh watchlist')
     } finally {
       setLoading(false)
     }
-  }, [entries])
+  }, [apiKey, canUse, entries, isConnected])
 
   useEffect(() => {
     void refresh()
@@ -135,46 +146,72 @@ export function WatchlistPanel() {
 
       {error ? <p className="error">{error}</p> : null}
 
-      <div className="table-wrap">
-        <table>
+      {isMobile ? (
+        <MobileWatchlistCards
+          rows={rows}
+          onOpenItem={(row) => openItem({ id: row.itemId, name: row.name, icon: row.icon })}
+          onRemove={remove}
+        />
+      ) : (
+      <div className="table-wrap table-sticky">
+        <table className="data-table">
           <thead>
             <tr>
               <th>Item</th>
+              <th>Trend</th>
               <th>Buy</th>
               <th>Sell</th>
               <th>Profit</th>
               <th>ROI</th>
+              <th />
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.itemId} className="clickable-row">
-                <td className="item-cell">
-                  <button
-                    type="button"
-                    className="row-link"
-                    onClick={() => openItem({ id: row.itemId, name: row.name, icon: row.icon })}
-                  >
-                    {row.icon ? <img src={row.icon} alt="" width={28} height={28} /> : null}
-                    {row.name}
-                  </button>
-                </td>
-                <td>{formatCoins(row.buyPrice)}</td>
-                <td>{formatCoins(row.sellPrice)}</td>
-                <td className={row.listingProfit > 0 ? 'profit' : 'loss'}>
-                  {formatCoins(row.listingProfit)}
-                </td>
-                <td>{row.listingRoi.toFixed(1)}%</td>
-                <td>
-                  <button type="button" className="icon-btn" onClick={() => remove(row.itemId)} title="Remove">
-                    ✕
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {rows.map((row) => {
+              const trend = profitTrend(row.itemId)
+              return (
+                <tr key={row.itemId} className="clickable-row">
+                  <td className="item-cell">
+                    <button
+                      type="button"
+                      className="row-link"
+                      onClick={() => openItem({ id: row.itemId, name: row.name, icon: row.icon })}
+                    >
+                      {row.icon ? <img src={row.icon} alt="" width={28} height={28} /> : null}
+                      {row.name}
+                    </button>
+                  </td>
+                  <td>
+                    {trend ? (
+                      <span
+                        className={`price-trend price-trend-${trend}`}
+                        title={trendTitle(trend)}
+                        aria-label={trendTitle(trend)}
+                      >
+                        {trendLabel(trend)}
+                      </span>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td>{formatCoins(row.buyPrice)}</td>
+                  <td>{formatCoins(row.sellPrice)}</td>
+                  <td className={row.listingProfit > 0 ? 'profit' : 'loss'}>
+                    {formatCoins(row.listingProfit)}
+                  </td>
+                  <td>{row.listingRoi.toFixed(1)}%</td>
+                  <td>
+                    <button type="button" className="icon-btn" onClick={() => remove(row.itemId)} title="Remove">
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
+      )}
     </section>
   )
 }

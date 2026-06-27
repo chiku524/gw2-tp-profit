@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useItemDetail } from '../context/ItemDetailProvider'
 import { useWatchlist } from '../context/WatchlistProvider'
+import { useIsMobile } from '../hooks/useMediaQuery'
 import { filterRowsByScanFilters } from '../lib/scanFilters'
 import { disciplineLabel } from '../lib/disciplines'
 import { categoryLabel } from '../lib/itemCategories'
 import { useNamedFlips } from '../hooks/useNamedFlips'
+import { MobileFlipCards } from './MobileFlipCards'
 import { RiskFlagBadges } from './RiskFlagBadges'
 import { formatCoins } from '../lib/coins'
 import type { FlipOpportunity, FlipSortKey, ScanFilters } from '../types'
@@ -44,6 +46,7 @@ function sortRows(rows: FlipOpportunity[], key: FlipSortKey, dir: SortDir): Flip
 export function FlipTable({ rows, scanFilters }: Props) {
   const { openItem } = useItemDetail()
   const { isWatched, toggle } = useWatchlist()
+  const isMobile = useIsMobile()
   const namedRows = useNamedFlips(rows)
   const filteredRows = scanFilters ? filterRowsByScanFilters(namedRows, scanFilters) : namedRows
   const [sortKey, setSortKey] = useState<FlipSortKey>('profit')
@@ -87,22 +90,30 @@ export function FlipTable({ rows, scanFilters }: Props) {
       />
       <span className="hint">{displayed.length} of {filteredRows.length} shown</span>
 
-      <div className="table-wrap">
-        <table>
+      {isMobile ? (
+        <MobileFlipCards
+          rows={displayed}
+          isWatched={isWatched}
+          onToggleWatch={(row) => toggle({ itemId: row.itemId, name: row.itemName, icon: row.icon })}
+          onOpenItem={(row) => openItem({ id: row.itemId, name: row.itemName, icon: row.icon })}
+        />
+      ) : (
+      <div className="table-wrap table-sticky">
+        <table className="data-table">
           <thead>
             <tr>
-              <th></th>
-              <th>{sortLabel('name', 'Item')}</th>
-              <th>Category</th>
-              <th>Disciplines</th>
-              <th>{sortLabel('buy', 'Lowest sell')}</th>
-              <th>{sortLabel('sell', 'Highest buy')}</th>
-              <th>{sortLabel('profit', 'List profit')}</th>
-              <th>{sortLabel('roi', 'ROI')}</th>
-              <th>{sortLabel('spread', 'Gap')}</th>
-              <th>{sortLabel('liquidity', 'Liquidity')}</th>
-              <th>Risks</th>
-              <th>{sortLabel('volume', 'Volume')}</th>
+              <th className="col-sticky-left"></th>
+              <th className="col-sticky-left col-sticky-left-2">{sortLabel('name', 'Item')}</th>
+              <th className="col-hide-mobile">Category</th>
+              <th className="col-hide-mobile">Disciplines</th>
+              <th className="col-hide-mobile">{sortLabel('buy', 'Lowest sell')}</th>
+              <th className="col-hide-mobile">{sortLabel('sell', 'Highest buy')}</th>
+              <th className="col-sticky-right">{sortLabel('profit', 'List profit')}</th>
+              <th className="col-hide-mobile">{sortLabel('roi', 'ROI')}</th>
+              <th className="col-hide-mobile">{sortLabel('spread', 'Gap')}</th>
+              <th className="col-hide-mobile">{sortLabel('liquidity', 'Liquidity')}</th>
+              <th className="col-hide-mobile">Risks</th>
+              <th className="col-hide-mobile">{sortLabel('volume', 'Volume')}</th>
             </tr>
           </thead>
           <tbody>
@@ -163,6 +174,7 @@ export function FlipTable({ rows, scanFilters }: Props) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   )
 }
