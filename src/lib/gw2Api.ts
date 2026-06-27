@@ -15,6 +15,30 @@ import type {
 
 const BATCH_SIZE = 200
 
+function isGw2NotFound(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('404')
+}
+
+/** Split batches on 404 — GW2 returns 404 when every id in a batch is missing/not on TP. */
+async function fetchIdsResilient<T>(
+  ids: number[],
+  fetchBatch: (batch: number[]) => Promise<T[]>,
+): Promise<T[]> {
+  if (ids.length === 0) return []
+  try {
+    return await fetchBatch(ids)
+  } catch (error) {
+    if (!isGw2NotFound(error)) throw error
+    if (ids.length === 1) return []
+    const mid = Math.ceil(ids.length / 2)
+    const [left, right] = await Promise.all([
+      fetchIdsResilient(ids.slice(0, mid), fetchBatch),
+      fetchIdsResilient(ids.slice(mid), fetchBatch),
+    ])
+    return [...left, ...right]
+  }
+}
+
 export async function fetchCommercePriceIds(): Promise<number[]> {
   return gw2Fetch<number[]>('/commerce/prices')
 }
@@ -34,8 +58,10 @@ export async function fetchCommercePrices(
     return [...hits, ...fetched]
   }
 
-  const result = await gw2Fetch<CommercePrice[]>(`/commerce/prices?ids=${ids.join(',')}`)
-  return Array.isArray(result) ? result : [result]
+  return fetchIdsResilient(ids, async (batch) => {
+    const result = await gw2Fetch<CommercePrice[]>(`/commerce/prices?ids=${batch.join(',')}`)
+    return Array.isArray(result) ? result : [result]
+  })
 }
 
 export async function fetchItems(ids: number[]): Promise<Gw2Item[]> {
@@ -88,8 +114,10 @@ export async function searchRecipesByOutput(itemId: number): Promise<number[]> {
 
 export async function fetchRecipes(ids: number[]): Promise<Gw2Recipe[]> {
   if (ids.length === 0) return []
-  const result = await gw2Fetch<Gw2Recipe[]>(`/recipes?ids=${ids.join(',')}`)
-  return Array.isArray(result) ? result : [result]
+  return fetchIdsResilient(ids, async (batch) => {
+    const result = await gw2Fetch<Gw2Recipe[]>(`/recipes?ids=${batch.join(',')}`)
+    return Array.isArray(result) ? result : [result]
+  })
 }
 
 export async function fetchRecipeIds(): Promise<number[]> {

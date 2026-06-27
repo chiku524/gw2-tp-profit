@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { useApiKey } from '../context/ApiKeyProvider'
 import { useCraftingContext } from './useCraftingContext'
 import {
   defaultProfitMoveFilters,
@@ -24,7 +25,6 @@ function loadFilters(): ProfitMoveFilters {
     ...saved,
     kinds: saved.kinds ?? defaultProfitMoveFilters.kinds,
     onlyCraftable: saved.onlyCraftable ?? defaultProfitMoveFilters.onlyCraftable,
-    onlyWithinMyLevels: saved.onlyWithinMyLevels ?? defaultProfitMoveFilters.onlyWithinMyLevels,
     disciplines: saved.disciplines ?? defaultProfitMoveFilters.disciplines,
     sortMode: saved.sortMode ?? defaultProfitMoveFilters.sortMode,
     minVolume: saved.minVolume ?? defaultProfitMoveFilters.minVolume,
@@ -32,6 +32,7 @@ function loadFilters(): ProfitMoveFilters {
 }
 
 export function useProfitMoves() {
+  const { canUse } = useApiKey()
   const { context: craftingContext } = useCraftingContext()
   const [moves, setMoves] = useState<ProfitMove[]>(() => loadProfitMovesCache()?.moves ?? [])
   const [progress, setProgress] = useState<ScanProgress>({ phase: 'idle', loaded: 0, total: 0 })
@@ -58,7 +59,8 @@ export function useProfitMoves() {
           if (!abortRef.current) setProgress({ phase: 'scanning', message, loaded, total })
         },
         { get aborted() { return abortRef.current } },
-        filters.onlyCraftable || filters.onlyWithinMyLevels ? craftingContext : null,
+        filters.onlyCraftable ? craftingContext : null,
+        { requireRecipeUnlocks: canUse('recipeUnlocks') },
       )
       if (abortRef.current) return
       setMoves(results)
@@ -76,7 +78,7 @@ export function useProfitMoves() {
         message: error instanceof Error ? error.message : 'Scan failed',
       })
     }
-  }, [filters, craftingContext])
+  }, [filters, craftingContext, canUse])
 
   const stopScan = useCallback(() => {
     abortRef.current = true

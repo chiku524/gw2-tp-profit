@@ -266,7 +266,6 @@ export type ProfitMoveFilters = {
   kinds: ProfitMoveKind[]
   maxResults: number
   onlyCraftable: boolean
-  onlyWithinMyLevels: boolean
   disciplines: string[]
   sortMode: ProfitMoveSortMode
   minVolume: number

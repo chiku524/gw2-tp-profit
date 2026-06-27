@@ -185,41 +185,20 @@ export function CraftsPage() {
 
       <div className="account-filter-toggles">
         {isConnected ? (
-          <>
-            {canUse('craftingLevels') ? (
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={filters.onlyWithinMyLevels}
-                  disabled={filters.onlyCraftable}
-                  onChange={(event) =>
-                    setFilters({ ...filters, onlyWithinMyLevels: event.target.checked })
-                  }
-                />
-                Only within my crafting levels
-              </label>
-            ) : (
-              <PermissionHint feature="craftingLevels" compact />
-            )}
-            {canUse('recipeUnlocks') && canUse('craftingLevels') ? (
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={filters.onlyCraftable}
-                  onChange={(event) =>
-                    setFilters({
-                      ...filters,
-                      onlyCraftable: event.target.checked,
-                      onlyWithinMyLevels: event.target.checked ? true : filters.onlyWithinMyLevels,
-                    })
-                  }
-                />
-                Only discovered recipes I can craft (levels + unlocks)
-              </label>
-            ) : canUse('craftingLevels') ? null : (
-              <PermissionHint feature="recipeUnlocks" compact />
-            )}
-          </>
+          canUse('craftingLevels') ? (
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={filters.onlyCraftable}
+                onChange={(event) => setFilters({ ...filters, onlyCraftable: event.target.checked })}
+              />
+              {canUse('recipeUnlocks')
+                ? 'Only discovered recipes I can craft (levels + unlocks)'
+                : 'Only within my crafting levels'}
+            </label>
+          ) : (
+            <PermissionHint feature="craftingLevels" compact />
+          )
         ) : (
           <p className="hint">
             Connect an API key with Characters (and Unlocks for recipe filtering) to limit results to

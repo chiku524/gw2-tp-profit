@@ -12,7 +12,7 @@ import {
 } from './profitMoveVolume'
 import { suggestUndercutSell } from './marketMath'
 import { listingFlipProfit, roi } from './profit'
-import { isRecipeCraftable, meetsCraftingLevel, type CraftingContext } from './recipeAccess'
+import { isRecipeCraftable, type CraftingContext } from './recipeAccess'
 import type {
   CommercePrice,
   Gw2Item,
@@ -36,7 +36,6 @@ export const defaultProfitMoveFilters: ProfitMoveFilters = {
   kinds: ['refinement', 'craft'],
   maxResults: 80,
   onlyCraftable: false,
-  onlyWithinMyLevels: false,
   disciplines: [],
   sortMode: 'profit',
   minVolume: 0,
@@ -117,11 +116,16 @@ function profitMoveFromRecipe(
   }
 }
 
+export type ScanProfitMovesOptions = {
+  requireRecipeUnlocks?: boolean
+}
+
 export async function scanProfitMoves(
   filters: ProfitMoveFilters,
   onProgress?: (message: string, loaded: number, total: number) => void,
   signal?: { aborted: boolean },
   craftingContext?: CraftingContext | null,
+  options?: ScanProfitMovesOptions,
 ): Promise<ProfitMove[]> {
   onProgress?.('Loading recipe list…', 0, 1)
   const recipeIds = await fetchRecipeIds()
@@ -163,19 +167,12 @@ export async function scanProfitMoves(
 
   const moves: ProfitMove[] = []
   for (const recipe of recipes) {
-    if (craftingContext) {
-      if (filters.onlyCraftable) {
-        if (
-          !isRecipeCraftable(recipe, craftingContext, {
-            requireUnlock: true,
-            requireLevel: true,
-          })
-        ) {
-          continue
-        }
-      } else if (
-        filters.onlyWithinMyLevels &&
-        !meetsCraftingLevel(recipe, craftingContext.maxRatingByDiscipline)
+    if (craftingContext && filters.onlyCraftable) {
+      if (
+        !isRecipeCraftable(recipe, craftingContext, {
+          requireUnlock: options?.requireRecipeUnlocks ?? false,
+          requireLevel: true,
+        })
       ) {
         continue
       }
